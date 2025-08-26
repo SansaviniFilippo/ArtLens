@@ -194,6 +194,8 @@ function openDetail(entry, confidence) {
       id: entry?.parentId || entry?.id || null,
     };
     localStorage.setItem('artlens:lastArtwork', JSON.stringify(payload));
+    // mark that we should return to scanner quickly from details
+    localStorage.setItem('artlens:returnTo', 'scanner');
   } catch {}
 
   // Stop rendering/camera loop while we navigate

@@ -32,6 +32,14 @@
   // Back button
   const back = document.getElementById('goBack');
   if (back) back.addEventListener('click', () => {
+    try {
+      const rt = localStorage.getItem('artlens:returnTo');
+      if (rt === 'scanner') {
+        try { localStorage.removeItem('artlens:returnTo'); } catch {}
+        location.replace('scanner.html');
+        return;
+      }
+    } catch {}
     if (history.length > 1) history.back();
     else window.location.href = 'index.html';
   });
