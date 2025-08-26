@@ -227,9 +227,47 @@ appEl?.addEventListener('click', (ev) => {
 async function runStartup() {
   if (running || stream) return;
   if (startBtn) startBtn.disabled = true;
+
+  // Activation overlay elements (present only on scanner page)
+  const activate = document.getElementById('activate');
+  const cnt = document.getElementById('activateCountdown');
+  const bar = document.getElementById('activateBar');
+
+  function startCountdown(ms = 3000) {
+    if (!activate) return Promise.resolve();
+    activate.classList.remove('hidden');
+    if (cnt) cnt.textContent = '3';
+    if (bar) bar.style.width = '0%';
+    const t0 = performance.now();
+    let lastShown = 3;
+    return new Promise((resolve) => {
+      function tick(now) {
+        const elapsed = Math.max(0, now - t0);
+        const left = Math.max(0, ms - elapsed);
+        const sec = Math.ceil(left / 1000); // 3 -> 2 -> 1 -> 0
+        const show = Math.min(3, Math.max(1, sec || 1));
+        if (cnt && show !== lastShown) { cnt.textContent = String(show); lastShown = show; }
+        const pct = Math.max(0, Math.min(100, (elapsed / ms) * 100));
+        if (bar) bar.style.width = pct.toFixed(2) + '%';
+        if (elapsed < ms) requestAnimationFrame(tick);
+        else resolve();
+      }
+      requestAnimationFrame(tick);
+    });
+  }
+
+  function hideActivate() {
+    if (!activate) return;
+    activate.classList.add('hidden');
+  }
+
   try {
     status('Starting camera…');
-    await startCamera();
+    const camPromise = startCamera();
+    const cdPromise = startCountdown(3000);
+    await Promise.all([camPromise, cdPromise]);
+    hideActivate();
+
     if (hudEl) hudEl.classList.add('hidden');
     running = true;
     startLoop();
@@ -249,6 +287,13 @@ async function runStartup() {
   } catch (err) {
     console.error(err);
     if (startBtn) startBtn.disabled = false;
+    // Keep activate card visible and show error if present
+    try {
+      const title = document.getElementById('activateTitle');
+      if (title) title.textContent = 'Camera permission needed';
+      if (cnt) cnt.textContent = '!';
+      if (bar) bar.style.width = '0%';
+    } catch {}
     status('Error: ' + (err?.message || err));
   }
 }
