@@ -175,12 +175,16 @@ let running = false;
 let lastVideoTime = -1;
 let lastInferTime = 0;
 const INFER_INTERVAL_MS = 90; // ~11 Hz throttling to reduce load and artifacts
+let navigatingToDetail = false; // guard to prevent duplicate navigations
 
 function status(msg) {
   setStatus(statusEl, msg);
 }
 
 function openDetail(entry, confidence) {
+  // Guard against duplicate navigations (double taps/callbacks)
+  if (navigatingToDetail) return;
+  navigatingToDetail = true;
   // New behavior: navigate to dedicated details page instead of overlaying on camera
   try {
     const payload = {
@@ -231,6 +235,8 @@ function openDetail(entry, confidence) {
     const sheet = document.querySelector('.detail-card');
     if (sheet) { sheet.scrollTop = 0; sheet.style.transform = ''; }
   } catch {}
+  // We are staying on the scanner page (overlay fallback), allow future navigations
+  navigatingToDetail = false;
 }
 
 function closeDetail() {

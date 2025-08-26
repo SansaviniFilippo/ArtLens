@@ -12,6 +12,10 @@
   <link rel="stylesheet" href="styles/detail.css" />
   <link rel="preload" href="images/tap.webp" as="image" />
   <link rel="stylesheet" href="styles/embed.css" />
+  <!-- Prefetch detail page and assets for faster transition -->
+  <link rel="prefetch" href="detail.html" as="document">
+  <link rel="prefetch" href="styles/artwork_detail.css" as="style">
+  <link rel="modulepreload" href="../src/js/details.js">
 </head>
 <body>
   <main class="stage" id="app">
