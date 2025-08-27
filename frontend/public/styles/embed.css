@@ -64,7 +64,7 @@ html, body { background: #000; }
 .bbox-labels { position: absolute; inset: 0; z-index: 6; pointer-events: none; }
 .bbox-labels .rec-label {
   position: absolute; left: 0; top: 0; /* positioned by JS */
-  transform: translate(-50%, calc(-100% - 12px));
+  transform: translate(-50%, -50%);
   display: inline-flex; align-items: center; gap: 6px;
   background: rgba(59,130,246,0.95); /* bg-blue-500/95 */
   -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);

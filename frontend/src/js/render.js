@@ -381,8 +381,8 @@ function updateRecognitionLabels(matches, onClick) {
     for (const m of matches) {
       if (!m || !m.box) continue;
       const cx = (m.box.originX || 0) + (m.box.width || 0) / 2;
-      const ty = (m.box.originY || 0);
-      const pt = videoPointToDisplay(cx, ty);
+      const cy = (m.box.originY || 0) + (m.box.height || 0) / 2;
+      const pt = videoPointToDisplay(cx, cy);
 
       const el = document.createElement('div');
       el.className = 'rec-label';
