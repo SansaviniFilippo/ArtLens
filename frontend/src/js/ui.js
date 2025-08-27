@@ -100,49 +100,7 @@ export function clearHotspots() {
 }
 
 export function renderHotspot(match, onClick) {
-  if (!hotspotsEl || !match || !match.box) return;
-  const { entry, confidence, box } = match;
-  const centerX = (box.originX || 0) + (box.width || 0) / 2;
-  const centerY = (box.originY || 0) + (box.height || 0) / 2;
-  const pt = videoPointToDisplay(centerX, centerY);
-  const key = (entry && (entry.id != null ? String(entry.id) : (entry.title || ''))) || '';
-
-  // If same hotspot already exists, just update position to avoid re-animating each frame
-  const existing = hotspotsEl.firstElementChild;
-  if (existing && existing.dataset && existing.dataset.key === key) {
-    existing.style.left = `${pt.x}px`;
-    existing.style.top = `${pt.y}px`;
-    return;
-  }
-
-  // Otherwise, render a fresh hotspot
-  hotspotsEl.innerHTML = '';
-  const hs = document.createElement('div');
-  hs.className = 'hotspot hand';
-  hs.dataset.key = key;
-  hs.style.left = `${pt.x}px`;
-  hs.style.top = `${pt.y}px`;
-  hs.setAttribute('role', 'button');
-  hs.setAttribute('tabindex', '0');
-  const lang = getLang();
-  const aria = lang === 'en' ? 'Open artwork details' : 'Apri dettagli opera';
-  hs.setAttribute('aria-label', aria);
-
-  // Insert tap icon image served by frontend only
-  const img = document.createElement('img');
-  img.src = 'images/new_tap.png';
-  img.alt = '';
-  img.draggable = false;
-  hs.appendChild(img);
-
-  const handle = (ev) => {
-    try { ev.preventDefault(); ev.stopPropagation(); } catch {}
-    if (typeof onClick === 'function') onClick(entry, confidence);
-  };
-  hs.addEventListener('click', handle, { passive: false });
-  hs.addEventListener('keydown', (ev) => {
-    if (ev.key === 'Enter' || ev.key === ' ') handle(ev);
-  });
-
-  hotspotsEl.appendChild(hs);
+  // Per request: do not render the tap image hotspot anymore.
+  // Interactions are handled by clickable green bboxes and/or labels.
+  return;
 }
