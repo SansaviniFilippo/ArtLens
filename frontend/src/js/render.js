@@ -34,6 +34,7 @@ const CORNER_LEN_FACTOR = 0.085; // bracket length as fraction of min(w,h)
 const CORNER_OFFSET = 6;         // gap between rounded box and corner brackets
 const LABEL_GAP_FROM_TL = 8;     // extra gap after the TL bracket so label never overlaps it
 const LABEL_TOP_OFFSET = 36;     // vertical distance from box top to label top
+const GREEN = '#10b981';         // recognized bbox color
 
 function nowMs() { return (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now(); }
 
@@ -51,13 +52,14 @@ function roundRectPath(ctx, x, y, w, h, r){
   ctx.arcTo(x, y, x + rr, y, rr);
 }
 
-function drawCornerBrackets(ctx, x, y, w, h, len, offset){
+function drawCornerBrackets(ctx, x, y, w, h, len, offset, color){
   const l = Math.max(6, len|0), o = Math.max(0, offset|0);
   ctx.save();
   const baseLW = ctx.lineWidth || 1;
   ctx.lineWidth = Math.max(6, baseLW + 2); /* thicker, bold-like */
   ctx.lineJoin = 'round';
   ctx.lineCap = 'round';
+  if (color) { ctx.strokeStyle = color; }
   ctx.beginPath();
   // TL
   ctx.moveTo(x - o, y + l);
@@ -94,18 +96,23 @@ function drawRoundedBox(ctx, x, y, w, h) {
   drawCornerBrackets(ctx, x, y, w, h, getCornerLen(w, h), CORNER_OFFSET);
 }
 
-function drawBestGlow(ctx, x, y, w, h) {
+function drawBestGlow(ctx, x, y, w, h, color) {
   ctx.save();
   ctx.lineWidth = 3;
   ctx.shadowBlur = 14;
-  ctx.shadowColor = (getComputedStyle(document.documentElement).getPropertyValue('--box-glow') || 'rgba(217,119,6,0.35)').trim();
-  ctx.strokeStyle = (getComputedStyle(document.documentElement).getPropertyValue('--box-glow-strong') || 'rgba(217,119,6,0.85)').trim();
+  if (color) {
+    ctx.shadowColor = 'rgba(16,185,129,0.55)'; // green glow
+    ctx.strokeStyle = color;
+  } else {
+    ctx.shadowColor = (getComputedStyle(document.documentElement).getPropertyValue('--box-glow') || 'rgba(217,119,6,0.35)').trim();
+    ctx.strokeStyle = (getComputedStyle(document.documentElement).getPropertyValue('--box-glow-strong') || 'rgba(217,119,6,0.85)').trim();
+  }
   roundRectPath(ctx, x, y, w, h, Math.max(10, Math.min(w, h) * 0.06));
   ctx.stroke();
   ctx.restore();
 }
 
-function drawCrosshair(ctx, x, y, w, h) {
+function drawCrosshair(ctx, x, y, w, h, color) {
   // Draw a centered plus sign inside the box
   const cx = Math.round(x + w / 2);
   const cy = Math.round(y + h / 2);
@@ -113,8 +120,8 @@ function drawCrosshair(ctx, x, y, w, h) {
   ctx.save();
   ctx.lineWidth = 2;
   ctx.lineCap = 'round';
-  const col = getComputedStyle(document.documentElement).getPropertyValue('--box-color') || '#d97706';
-  ctx.strokeStyle = col.trim();
+  const col = (color || getComputedStyle(document.documentElement).getPropertyValue('--box-color') || '#d97706');
+  ctx.strokeStyle = ('' + col).trim();
   ctx.shadowColor = (getComputedStyle(document.documentElement).getPropertyValue('--box-glow') || 'rgba(217,119,6,0.45)').trim();
   ctx.shadowBlur = 6;
   ctx.beginPath();
@@ -213,10 +220,11 @@ export async function drawDetections(ctx, result, onHotspotClick) {
           fallbackMatched = true;
 
           drawRoundedBox(ctx, box.originX, box.originY, box.width, box.height);
-          // premium glow for the matched box
-          drawBestGlow(ctx, box.originX, box.originY, box.width, box.height);
-          // centered crosshair
-          drawCrosshair(ctx, box.originX, box.originY, box.width, box.height);
+          // premium glow for the matched box (green)
+          drawBestGlow(ctx, box.originX, box.originY, box.width, box.height, GREEN);
+          // overlay green brackets and crosshair to indicate recognition
+          drawCornerBrackets(ctx, box.originX, box.originY, box.width, box.height, getCornerLen(box.width, box.height), CORNER_OFFSET, GREEN);
+          drawCrosshair(ctx, box.originX, box.originY, box.width, box.height, GREEN);
 
           const pct = (confidence*100).toFixed(1) + '%';
           {
@@ -307,6 +315,9 @@ export async function drawDetections(ctx, result, onHotspotClick) {
         const hitBox = det.__alignedBox || det.boundingBox;
         lastMatches.push({ entry, confidence, box: hitBox });
         anyMatch = true;
+        // Overlay green styling to indicate recognized artwork
+        drawCornerBrackets(ctx, box.originX, box.originY, box.width, box.height, getCornerLen(box.width, box.height), CORNER_OFFSET, GREEN);
+        drawCrosshair(ctx, box.originX, box.originY, box.width, box.height, GREEN);
       }
 
       {
@@ -327,10 +338,11 @@ export async function drawDetections(ctx, result, onHotspotClick) {
     let best = lastMatches[0];
     for (const m of lastMatches) if (m.confidence > best.confidence) best = m;
     stickyBest = { entry: best.entry, confidence: best.confidence, box: best.box, until: t + STICKY_MS };
-    // Glow highlight on best
-    drawBestGlow(ctx, best.box.originX, best.box.originY, best.box.width, best.box.height);
-    // Crosshair on best (ensure visibility above fill)
-    drawCrosshair(ctx, best.box.originX, best.box.originY, best.box.width, best.box.height);
+    // Glow highlight on best (green)
+    drawBestGlow(ctx, best.box.originX, best.box.originY, best.box.width, best.box.height, GREEN);
+    // Green corner brackets and crosshair on best
+    drawCornerBrackets(ctx, best.box.originX, best.box.originY, best.box.width, best.box.height, getCornerLen(best.box.width, best.box.height), CORNER_OFFSET, GREEN);
+    drawCrosshair(ctx, best.box.originX, best.box.originY, best.box.width, best.box.height, GREEN);
     // Hotspot and hint for current best
     renderHotspot(best, onHotspotClick);
     // Update recognition labels for all matches
@@ -346,8 +358,9 @@ export async function drawDetections(ctx, result, onHotspotClick) {
   } else if (stickyBest && t < stickyBest.until && stickyBest.confidence >= (COSINE_THRESHOLD - HYSTERESIS_DROP)) {
     // Keep last best briefly to avoid flicker
     const b = stickyBest;
-    drawBestGlow(ctx, b.box.originX, b.box.originY, b.box.width, b.box.height);
-    drawCrosshair(ctx, b.box.originX, b.box.originY, b.box.width, b.box.height);
+    drawBestGlow(ctx, b.box.originX, b.box.originY, b.box.width, b.box.height, GREEN);
+    drawCornerBrackets(ctx, b.box.originX, b.box.originY, b.box.width, b.box.height, getCornerLen(b.box.width, b.box.height), CORNER_OFFSET, GREEN);
+    drawCrosshair(ctx, b.box.originX, b.box.originY, b.box.width, b.box.height, GREEN);
     updateRecognitionLabels([b], onHotspotClick);
   } else {
     stickyBest = null;
