@@ -97,6 +97,8 @@ function drawRoundedBox(ctx, x, y, w, h) {
 }
 
 function drawBestGlow(ctx, x, y, w, h, color) {
+  // If recognized state requests no perimeter: skip drawing when GREEN is passed
+  if (color === GREEN) return;
   ctx.save();
   ctx.lineWidth = 3;
   ctx.shadowBlur = 14;
