@@ -4,28 +4,6 @@
 #hud { display: none !important; }
 html, body { background: #000; }
 
-/* Recognized bbox labels overlay */
-.bbox-labels { position: absolute; inset: 0; z-index: 6; pointer-events: none; }
-.bbox-labels .cam-label {
-  position: absolute;
-  left: 0; top: 0; /* will be placed via JS */
-  transform: translate(-50%, calc(-100% - 10px)); /* center horizontally and place above */
-  width: 64px; height: 64px; /* w-16 h-16 */
-  background: #dbeafe; /* bg-blue-100 */
-  border-radius: 9999px; /* rounded-full */
-  display: flex; align-items: center; justify-content: center; /* flex centering */
-  margin: 0; /* reset */
-}
-.bbox-labels .cam-label .cam-ico {
-  display: block; width: 32px; height: 32px; /* w-8 h-8 */
-  background-color: #2563eb; /* text-blue-600 */
-  -webkit-mask-image: url('../images/camera_2.png');
-  mask-image: url('../images/camera_2.png');
-  -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
-  -webkit-mask-position: center; mask-position: center;
-  -webkit-mask-size: contain; mask-size: contain;
-}
-
 /* Scanner camera header overlay styles matching the provided spec */
 .camera-header {
   position: absolute;
@@ -80,3 +58,27 @@ html, body { background: #000; }
   -webkit-mask-size: contain;
   mask-size: contain;
 }
+
+
+/* Recognized bbox labels overlay (pill "Tocca") */
+.bbox-labels { position: absolute; inset: 0; z-index: 6; pointer-events: none; }
+.bbox-labels .rec-label {
+  position: absolute; left: 0; top: 0; /* positioned by JS */
+  transform: translate(-50%, calc(-100% - 12px));
+  display: inline-flex; align-items: center; gap: 6px;
+  background: rgba(59,130,246,0.95); /* bg-blue-500/95 */
+  -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
+  color: #fff;
+  padding: 6px 12px; /* py-1.5 px-3 */
+  border-radius: 9999px; /* rounded-full */
+  font-size: 12px; line-height: 1; font-weight: 500; /* text-xs font-medium */
+  cursor: pointer; pointer-events: auto;
+  transition: all 200ms ease;
+  box-shadow: 0 10px 20px rgba(0,0,0,0.35);
+  border: 1px solid rgba(96,165,250,0.3); /* border-blue-400/30 */
+  animation: labelPulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+.bbox-labels .rec-label:hover { background: rgba(37,99,235,0.95); /* hover:bg-blue-600/95 */ }
+.bbox-labels .rec-label .ico { width: 12px; height: 12px; display: inline-block; }
+
+@keyframes labelPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }

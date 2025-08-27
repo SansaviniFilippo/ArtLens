@@ -1,7 +1,7 @@
 import { videoEl, canvasEl } from './dom.js';
 import { clearHotspots, renderHotspot, placeHintOverBox, showHintFor, hideHint, showInfo, videoPointToDisplay } from './ui.js';
 import { cropToCanvasFromVideo, embedFromCanvas, cosineSim, hasEmbedModel } from './embedding.js';
-import { artworkDB, dbDim, pickLangText } from './db.js';
+import { artworkDB, dbDim, pickLangText, getLang } from './db.js';
 import { COSINE_THRESHOLD, DEBUG_FALLBACK_CROP, MAX_BOXES_PER_FRAME, MIN_BOX_SCORE } from './constants.js';
 
 let lastMatches = [];
@@ -242,8 +242,7 @@ export async function drawDetections(ctx, result, onHotspotClick) {
             showHintFor(entry, box);
           }
           renderHotspot({ entry, confidence, box }, onHotspotClick);
-          // Update camera circle labels above bbox
-          updateBboxLabels(lastMatches);
+          updateRecognitionLabels(lastMatches, onHotspotClick);
         }
       } catch (e) { console.warn('Fallback match failed:', e); }
     }
@@ -252,8 +251,7 @@ export async function drawDetections(ctx, result, onHotspotClick) {
       hideHint();
       showInfo(null);
       clearHotspots();
-      // Clear camera circle labels
-      updateBboxLabels([]);
+      updateRecognitionLabels([], onHotspotClick);
     }
     return;
   }
@@ -342,8 +340,8 @@ export async function drawDetections(ctx, result, onHotspotClick) {
     drawCrosshair(ctx, best.box.originX, best.box.originY, best.box.width, best.box.height);
     // Hotspot and hint for current best
     renderHotspot(best, onHotspotClick);
-    // Update camera circle labels for all matches
-    updateBboxLabels(lastMatches);
+    // Update recognition labels for all matches
+    updateRecognitionLabels(lastMatches, onHotspotClick);
     placeHintOverBox(best.box);
     try { showInfo(best.entry.title || 'Artwork', pickLangText(best.entry.descriptions), best.confidence); } catch {}
     const key = (best.entry && (best.entry.id != null ? String(best.entry.id) : (best.entry.title || '')));
@@ -357,14 +355,14 @@ export async function drawDetections(ctx, result, onHotspotClick) {
     const b = stickyBest;
     drawBestGlow(ctx, b.box.originX, b.box.originY, b.box.width, b.box.height);
     drawCrosshair(ctx, b.box.originX, b.box.originY, b.box.width, b.box.height);
-    updateBboxLabels([b]);
+    updateRecognitionLabels([b], onHotspotClick);
   } else {
     stickyBest = null;
     lastRecognizedKey = null;
     hideHint();
     showInfo(null);
     clearHotspots();
-    updateBboxLabels([]);
+    updateRecognitionLabels([], onHotspotClick);
   }
 }
 
@@ -377,28 +375,61 @@ export function resetRenderState() {
   lastRecognizedKey = null;
 }
 
-// Render/update circular camera labels above recognized bboxes
-function updateBboxLabels(matches) {
+
+// Render/update pill labels ("Tocca") above recognized bboxes
+function updateRecognitionLabels(matches, onClick) {
   try {
     const host = document.getElementById('bboxLabels');
     if (!host) return;
     host.innerHTML = '';
-    if (!matches || !matches.length) return;
+    if (!matches || !matches.length) { host.setAttribute('aria-hidden', 'true'); return; }
+    host.setAttribute('aria-hidden', 'false');
+
+    const lang = (typeof getLang === 'function' ? getLang() : 'it');
+    const labelText = lang === 'en' ? 'Tap' : 'Tocca';
+    const ariaText = lang === 'en' ? 'Tap for info' : 'Tocca per info';
+
     for (const m of matches) {
-      const box = m && m.box;
-      if (!box) continue;
-      const cx = (box.originX || 0) + (box.width || 0) / 2;
-      const ty = (box.originY || 0); // top edge
+      if (!m || !m.box) continue;
+      const cx = (m.box.originX || 0) + (m.box.width || 0) / 2;
+      const ty = (m.box.originY || 0);
       const pt = videoPointToDisplay(cx, ty);
+
       const el = document.createElement('div');
-      el.className = 'cam-label';
+      el.className = 'rec-label';
       el.style.left = `${pt.x}px`;
       el.style.top = `${pt.y}px`;
-      // visual only; do not capture pointer events
-      el.style.pointerEvents = 'none';
-      const ico = document.createElement('span');
-      ico.className = 'cam-ico';
-      el.appendChild(ico);
+      el.setAttribute('role', 'button');
+      el.setAttribute('tabindex', '0');
+      el.setAttribute('aria-label', ariaText);
+
+      // Eye icon
+      el.insertAdjacentHTML('beforeend',
+        '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">\n' +
+        '  <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"></path>\n' +
+        '  <circle cx="12" cy="12" r="3"></circle>\n' +
+        '</svg>'
+      );
+      // Text
+      const span = document.createElement('span');
+      span.textContent = labelText;
+      el.appendChild(span);
+      // Info icon
+      el.insertAdjacentHTML('beforeend',
+        '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">\n' +
+        '  <circle cx="12" cy="12" r="10"></circle>\n' +
+        '  <path d="M12 16v-4"></path>\n' +
+        '  <path d="M12 8h.01"></path>\n' +
+        '</svg>'
+      );
+
+      const handle = (ev) => {
+        try { ev.preventDefault(); ev.stopPropagation(); } catch {}
+        if (typeof onClick === 'function') onClick(m.entry, m.confidence);
+      };
+      el.addEventListener('click', handle, { passive: false });
+      el.addEventListener('keydown', (ev) => { if (ev.key === 'Enter' || ev.key === ' ') handle(ev); });
+
       host.appendChild(el);
     }
   } catch (e) { /* noop */ }
