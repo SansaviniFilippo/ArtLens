@@ -10,8 +10,8 @@ html, body { background: #000; }
   top: 0; left: 0; right: 0;
   z-index: 5; /* above video/canvas, below activation overlay (z=10) */
   background: linear-gradient(to bottom, rgba(0,0,0,0.6), rgba(0,0,0,0));
-  padding: 16px;
-  padding-top: calc(env(safe-area-inset-top) + 48px); /* pt-12 + safe area */
+  padding: 8px 12px;
+  padding-top: calc(env(safe-area-inset-top) + 12px); /* closer to top */
   pointer-events: none; /* allow clicks to pass except on inner row */
 }
 .camera-header-row {
