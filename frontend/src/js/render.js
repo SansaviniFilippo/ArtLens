@@ -362,7 +362,7 @@ export function resetRenderState() {
 }
 
 
-// Render/update pill labels ("Tocca") above recognized bboxes
+// Render/update pill labels ("Tocca") below recognized bboxes
 function updateRecognitionLabels(matches, onClick) {
   try {
     const host = document.getElementById('bboxLabels');
@@ -385,24 +385,26 @@ function updateRecognitionLabels(matches, onClick) {
     for (const m of matches) {
       if (!m || !m.box) continue;
       const cx = (m.box.originX || 0) + (m.box.width || 0) / 2;
-      const cy = (m.box.originY || 0) + (m.box.height || 0) / 2;
-      const pt = videoPointToDisplay(cx, cy);
-      const key = (m.entry && (m.entry.id != null ? String(m.entry.id) : (m.entry.title || ''))) || `${Math.round(cx)}x${Math.round(cy)}`;
+      const by = (m.box.originY || 0) + (m.box.height || 0);
+      const pt = videoPointToDisplay(cx, by);
+      const dpX = pt.x;
+      const dpY = pt.y + 12; // place below bbox with margin
+      const key = (m.entry && (m.entry.id != null ? String(m.entry.id) : (m.entry.title || ''))) || `${Math.round(cx)}x${Math.round(by)}`;
       wantedKeys.add(key);
 
       // Try to reuse existing element by key
       let el = children.find(ch => ch && ch.dataset && ch.dataset.key === key);
       if (el) {
         // Update position only to keep animation running
-        el.style.left = `${pt.x}px`;
-        el.style.top = `${pt.y}px`;
+        el.style.left = `${dpX}px`;
+        el.style.top = `${dpY}px`;
       } else {
         // Create new label once
         el = document.createElement('div');
         el.className = 'rec-label';
         el.dataset.key = key;
-        el.style.left = `${pt.x}px`;
-        el.style.top = `${pt.y}px`;
+        el.style.left = `${dpX}px`;
+        el.style.top = `${dpY}px`;
         el.setAttribute('role', 'button');
         el.setAttribute('tabindex', '0');
         el.setAttribute('aria-label', ariaText);
