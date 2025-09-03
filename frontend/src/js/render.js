@@ -1,6 +1,6 @@
 import { videoEl, canvasEl } from './dom.js';
 import { clearHotspots, renderHotspot, placeHintOverBox, showHintFor, hideHint, showInfo, videoPointToDisplay } from './ui.js';
-import { cropToCanvasFromVideo, embedFromCanvas, cosineSim, hasEmbedModel } from './embedding.js';
+import { cropToCanvasFromVideo, embedFromCanvas, hasEmbedModel } from './embedding.js';
 import { artworkDB, dbDim, pickLangText, getLang } from './db.js';
 import { COSINE_THRESHOLD, DEBUG_FALLBACK_CROP, MAX_BOXES_PER_FRAME, MIN_BOX_SCORE } from './constants.js';
 
@@ -191,18 +191,22 @@ function drawCapsuleLabel(ctx, x, y, text, badge) {
 }
 
 function findBestMatch(embedding) {
-  if (!artworkDB.length) return null;
-  let best = { idx: -1, sim: -1 };
-  for (let i = 0; i < artworkDB.length; i++) {
+  if (!artworkDB.length || !embedding || typeof embedding.length !== 'number') return null;
+  const N = artworkDB.length;
+  const dim = embedding.length;
+  let bestIdx = -1;
+  let bestSim = -1.0;
+  for (let i = 0; i < N; i++) {
     const e = artworkDB[i];
-    if (!Array.isArray(e.embedding)) continue;
-    if (dbDim != null && e.embedding.length !== embedding.length) continue;
-    const sim = cosineSim(embedding, e.embedding);
-    if (sim > best.sim) best = { idx: i, sim };
+    const vec = e && e.embedding;
+    if (!vec || vec.length !== dim) continue;
+    let s = 0.0;
+    for (let j = 0; j < dim; j++) s += embedding[j] * vec[j];
+    if (s > bestSim) { bestSim = s; bestIdx = i; }
   }
-  if (best.idx < 0) return null;
-  const entry = artworkDB[best.idx];
-  return { entry, confidence: best.sim };
+  if (bestIdx < 0) return null;
+  const entry = artworkDB[bestIdx];
+  return { entry, confidence: bestSim };
 }
 
 export async function drawDetections(ctx, result, onHotspotClick) {

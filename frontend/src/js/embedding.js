@@ -69,14 +69,19 @@ export function cropToCanvasFromVideo(box) {
 export function embedFromCanvas(can) {
   const tf = globalThis.tf;
   if (!tf || !embedModel) throw new Error('Embedding model non disponibile');
-  const arr = tf.tidy(() => {
-    const input = tf.browser.fromPixels(can);
-    const embedding = embedModel.infer(input, true); // MobileNet embedding tensor [D]
-    const flat = embedding.flatten();
-    return flat.arraySync();
+  // Use TypedArray and normalize in-place to avoid GC and spread overhead
+  const out = tf.tidy(() => {
+    const input = tf.browser.fromPixels(can);            // [224,224,3]
+    const feat = embedModel.infer(input, true).flatten(); // Tensor1D [D]
+    return feat.dataSync(); // Float32Array
   });
-  const norm = Math.hypot(...arr);
-  return norm > 0 ? arr.map(v => v / norm) : arr;
+  let sum = 0.0;
+  for (let i = 0; i < out.length; i++) sum += out[i] * out[i];
+  const inv = sum > 0 ? 1 / Math.sqrt(sum) : 1.0;
+  if (inv !== 1.0) {
+    for (let i = 0; i < out.length; i++) out[i] *= inv;
+  }
+  return out; // Float32Array
 }
 
 export function cosineSim(vecA, vecB) {

@@ -32,11 +32,23 @@ export function pickLangText(descriptions, preferred) {
   return descriptions[lang] || descriptions.it || descriptions.en || Object.values(descriptions)[0] || null;
 }
 
-function normalizeEmbedding(vec) {
-  if (!Array.isArray(vec)) return null;
-  const norm = Math.hypot(...vec);
-  if (norm <= 0) return null;
-  return vec.map(v => v / norm);
+function normalizeEmbeddingToFloat32(vec) {
+  let a;
+  if (vec instanceof Float32Array) {
+    a = vec;
+  } else if (Array.isArray(vec)) {
+    a = Float32Array.from(vec);
+  } else if (vec && typeof vec.length === 'number' && typeof vec[0] === 'number') {
+    // Fallback for other TypedArrays
+    try { a = new Float32Array(vec); } catch { return null; }
+  } else {
+    return null;
+  }
+  let sum = 0.0; for (let i = 0; i < a.length; i++) sum += a[i] * a[i];
+  if (sum <= 0) return null;
+  const inv = 1 / Math.sqrt(sum);
+  for (let i = 0; i < a.length; i++) a[i] *= inv;
+  return a;
 }
 
 function toMapFromDescriptors(data) {
@@ -84,7 +96,7 @@ async function loadOptionB_v2() {
     const embs = Array.isArray(descMap?.[artId]) ? descMap[artId] : [];
     for (let i = 0; i < embs.length; i++) {
       const emb = embs[i];
-      const norm = normalizeEmbedding(emb);
+      const norm = normalizeEmbeddingToFloat32(emb);
       if (!norm) continue;
       flattened.push({
         id: `${artId}#${i}`,
@@ -124,7 +136,7 @@ async function loadOptionB() {
       continue;
     }
     const emb = descMap[id];
-    const normEmb = normalizeEmbedding(emb);
+    const normEmb = normalizeEmbeddingToFloat32(emb);
     const entry = { ...item };
     if (normEmb) entry.embedding = normEmb;
     merged.push(entry);
@@ -151,13 +163,14 @@ export async function loadArtworkDB() {
   dbDim = null;
   let normalized = 0;
   for (const e of artworkDB) {
-    if (!Array.isArray(e.embedding)) continue;
-    const normVec = normalizeEmbedding(e.embedding);
+    const emb = e && e.embedding;
+    if (!emb || typeof emb.length !== 'number') continue;
+    const normVec = normalizeEmbeddingToFloat32(emb);
     if (normVec) {
-      // if already normalized, this is idempotent
-      if (normVec !== e.embedding) normalized++;
+      // if already normalized, this may be the same reference (in-place)
+      if (normVec !== emb) normalized++;
       e.embedding = normVec;
-      dbDim = dbDim ?? e.embedding.length;
+      dbDim = dbDim ?? normVec.length;
     }
   }
 
