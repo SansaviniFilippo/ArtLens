@@ -12,5 +12,5 @@ export const COSINE_THRESHOLD = 0.65; // tune as needed [0..1]
 export const DEBUG_FALLBACK_CROP = false; // try center crop when no detections (debug only)
 
 // Rendering limits
-export const MAX_BOXES_PER_FRAME = 4; // limit number of boxes drawn per frame
-export const MIN_BOX_SCORE = 0.55; // min category score to draw a box/attempt match
+export const MAX_BOXES_PER_FRAME = 1; // limit number of boxes drawn per frame
+export const MIN_BOX_SCORE = 0.65; // min category score to draw a box/attempt match
