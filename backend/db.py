@@ -28,9 +28,6 @@ engine = create_engine(
     # Configurazioni specifiche per psycopg3 e Transaction Pooler
     connect_args={
         "connect_timeout": 10,  # Timeout connessione più breve
-        "server_settings": {
-            "application_name": "render_backend",
-        }
     }
 )
 
