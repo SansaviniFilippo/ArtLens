@@ -16,8 +16,8 @@ else:
 # IMPORTANTE: Usa NullPool per Transaction Pooler
 engine = create_engine(
     DB_URL,
+    client_encoding='utf8',
     poolclass=NullPool,  # Disabilita completamente il pooling SQLAlchemy
-    echo=False  # Metti True per debug
 )
 
 def run(sql: str, params=None):
