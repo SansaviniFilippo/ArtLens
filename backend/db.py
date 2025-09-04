@@ -1,6 +1,6 @@
 import os
 import time
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, text, NullPool
 from sqlalchemy.exc import OperationalError
 import logging
 
@@ -22,14 +22,14 @@ else:
 
 engine = create_engine(
     DB_URL,
-    # Pool piccolo per non trattenere troppe connessioni lato PgBouncer
-    pool_size=5,
-    max_overflow=5,
-    # Verifica la connessione prima dell'uso (scarta connessioni morte)
-    pool_pre_ping=True,
-    # Ricicla connessioni periodicamente per evitare stalli
-    pool_recycle=300,  # secondi (5 min)
+    client_encoding='utf8',
+    poolclass=NullPool,
+    connect_args={
+        "prepare_threshold": None  # per disabilitare prepared statements
+    }
 )
+
+
 
 def run_with_retry(sql: str, params=None, max_retries=3, retry_delay=1):
     """Execute SQL with retry logic for connection issues."""
