@@ -1,6 +1,5 @@
 import os
 from sqlalchemy import create_engine, text
-from sqlalchemy.pool import NullPool
 
 # SQLAlchemy engine for Supabase Postgres
 # Requires environment variable SUPABASE_DB_URL (include sslmode=require)
@@ -14,13 +13,8 @@ elif raw_url.startswith("postgresql://") and not raw_url.startswith("postgresql+
 else:
     DB_URL = raw_url  # already correct or custom
 
-# Use NullPool with Transaction Pooler (port 6543)
-engine = create_engine(
-    DB_URL,
-    poolclass=NullPool,                  # disabilita il pool lato client
-    connect_args={"sslmode": "require"}, # Supabase richiede SSL
-    pool_pre_ping=True                   # opzionale, evita connessioni zombie
-)
+# Keep pool small for free tiers
+engine = create_engine(DB_URL, pool_size=5, max_overflow=5, pool_pre_ping=True)
 
 
 def run(sql: str, params=None):
