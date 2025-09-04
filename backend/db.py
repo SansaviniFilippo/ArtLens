@@ -1,6 +1,9 @@
 import os
 import time
-from sqlalchemy import create_engine, text, NullPool
+import re
+from urllib.parse import urlparse, urlunparse, parse_qsl, urlencode
+from sqlalchemy import create_engine, text
+from sqlalchemy.pool import NullPool
 from sqlalchemy.exc import OperationalError
 import logging
 
@@ -8,16 +11,30 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# SQLAlchemy engine for Supabase Postgres
-raw_url = os.environ["SUPABASE_DB_URL"]
+# Database URL resolution and sanitization
 
-# Ensure SQLAlchemy uses psycopg v3 driver
-if raw_url.startswith("postgres://"):
-    DB_URL = "postgresql+psycopg://" + raw_url[len("postgres://"):]
-elif raw_url.startswith("postgresql://") and not raw_url.startswith("postgresql+psycopg://"):
-    DB_URL = "postgresql+psycopg://" + raw_url[len("postgresql://"):]
-else:
-    DB_URL = raw_url
+def sanitize_db_url(url: str) -> str:
+    # Force psycopg3 driver
+    if url.startswith("postgres://"):
+        url = "postgresql+psycopg://" + url[len("postgres://"):]
+    elif url.startswith("postgresql://") and not url.startswith("postgresql+psycopg://"):
+        url = "postgresql+psycopg://" + url[len("postgresql://"):]
+
+    # Remove a trailing slash just after the dbname (before ? or end)
+    url = re.sub(r'(\/[^\/?#]+)\/(?=(\?|$))', r'\1', url)
+
+    # Ensure sslmode present (default require)
+    parsed = urlparse(url)
+    q = dict(parse_qsl(parsed.query))
+    if "sslmode" not in q:
+        q["sslmode"] = os.getenv("PGSSLMODE", "require")
+    parsed = parsed._replace(query=urlencode(q))
+    return urlunparse(parsed)
+
+raw_url = os.getenv("DATABASE_URL") or os.getenv("SUPABASE_DB_URL")
+if not raw_url:
+    raise RuntimeError("DATABASE_URL or SUPABASE_DB_URL must be set")
+DB_URL = sanitize_db_url(raw_url)
 
 
 # Build connect args with SSL and keepalives for Render/Supabase/PgBouncer compatibility
@@ -33,16 +50,39 @@ _connect_args = {
     "application_name": os.getenv("PGAPPNAME", "ArtLens"),
 }
 
-engine = create_engine(
-    DB_URL,
-    client_encoding="utf8",
-    pool_pre_ping=True,
-    pool_recycle=int(os.getenv("DB_POOL_RECYCLE", "300")),
-    pool_size=int(os.getenv("DB_POOL_SIZE", "5")),
-    max_overflow=int(os.getenv("DB_MAX_OVERFLOW", "5")),
-    pool_timeout=int(os.getenv("DB_POOL_TIMEOUT", "10")),
-    connect_args=_connect_args,
-)
+# Pool configuration (PgBouncer-friendly)
+_use_nullpool_env = os.getenv("DB_USE_NULLPOOL", "true").strip().lower()
+USE_NULLPOOL = _use_nullpool_env in ("1", "true", "yes", "y", "on")
+
+# Diagnostics (redacted URL)
+_parsed = urlparse(DB_URL)
+_host = _parsed.hostname or "?"
+_port = _parsed.port or 5432
+_dbname = (_parsed.path or "/").lstrip("/")
+_q = dict(parse_qsl(_parsed.query))
+_sslmode = _q.get("sslmode", os.getenv("PGSSLMODE", "require"))
+
+if USE_NULLPOOL:
+    engine = create_engine(
+        DB_URL,
+        client_encoding="utf8",
+        pool_pre_ping=True,
+        poolclass=NullPool,
+        connect_args=_connect_args,
+    )
+    logger.info(f"[DB] Engine: host={_host} port={_port} db={_dbname} sslmode={_sslmode} pool=NullPool")
+else:
+    engine = create_engine(
+        DB_URL,
+        client_encoding="utf8",
+        pool_pre_ping=True,
+        pool_recycle=int(os.getenv("DB_POOL_RECYCLE", "300")),
+        pool_size=int(os.getenv("DB_POOL_SIZE", "3")),
+        max_overflow=int(os.getenv("DB_MAX_OVERFLOW", "2")),
+        pool_timeout=int(os.getenv("DB_POOL_TIMEOUT", "10")),
+        connect_args=_connect_args,
+    )
+    logger.info(f"[DB] Engine: host={_host} port={_port} db={_dbname} sslmode={_sslmode} pool=QueuePool(size={os.getenv('DB_POOL_SIZE', '3')}, overflow={os.getenv('DB_MAX_OVERFLOW', '2')})")
 
 
 
