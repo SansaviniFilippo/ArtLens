@@ -23,8 +23,8 @@ else:
 engine = create_engine(
     DB_URL,
     # Pool piccolo per non trattenere troppe connessioni lato PgBouncer
-    pool_size=3,
-    max_overflow=2,
+    pool_size=5,
+    max_overflow=5,
     # Verifica la connessione prima dell'uso (scarta connessioni morte)
     pool_pre_ping=True,
     # Ricicla connessioni periodicamente per evitare stalli
