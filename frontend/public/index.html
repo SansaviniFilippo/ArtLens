@@ -57,6 +57,14 @@
     <button id="closeScanner" type="button" title="Chiudi" aria-label="Chiudi">✕</button>
   </div>
 
+  <script>
+      if (!window.BACKEND_URL) {
+          const isLocalhost = location.hostname === "localhost" || location.hostname === "127.0.0.1";
+          window.BACKEND_URL = isLocalhost
+              ? "/api"  // backend locale
+              : "https://IL-TUO-BACKEND.up.railway.app"; // backend produzione
+      }
+  </script>
   <script type="module" src="../src/js/index.js"></script>
 </body>
 </html>
