@@ -1,7 +1,7 @@
 # ArtLens
 
 ArtLens è un sistema di riconoscimento opere d’arte composto da:
-- un frontend web che usa la fotocamera del dispositivo, rileva il quadro nella scena (MediaPipe ObjectDetector), produce un embedding visivo (TensorFlow.js + MobileNet) e fa il matching lato client;
+- un frontend web che usa la fotocamera del dispositivo, rileva l'opera (quadro/statua) nella scena (MediaPipe ObjectDetector), produce un embedding visivo (TensorFlow.js + MobileNet) e fa il matching lato client;
 - un backend FastAPI che espone il catalogo e i descrittori, oltre a endpoint amministrativi per inserire/aggiornare opere e descrittori nel database (Postgres/Supabase).
 
 ## Deployment
