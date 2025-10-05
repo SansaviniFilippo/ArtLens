@@ -6,7 +6,7 @@ ArtLens is an artwork recognition system composed of:
 
 ## Deployment
 - frontend on [Render](https://artlens-frontend.onrender.com)
-- backend on [Railway](https://artlens-production-a8a7.up.railway.app)
+- backend on [Railway](https://artlens-production-a8a7.up.railway.app/health)
 
 ## Overview and architecture
 - Frontend (frontend/public):
