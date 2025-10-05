@@ -1,31 +1,31 @@
 # ArtLens
 
-ArtLens è un sistema di riconoscimento opere d’arte composto da:
-- un frontend web che usa la fotocamera del dispositivo, rileva l'opera (quadro/statua) nella scena (MediaPipe ObjectDetector), produce un embedding visivo (TensorFlow.js + MobileNet) e fa il matching lato client;
-- un backend FastAPI che espone il catalogo e i descrittori, oltre a endpoint amministrativi per inserire/aggiornare opere e descrittori nel database (Postgres/Supabase).
+ArtLens is an artwork recognition system composed of:
+- a web frontend that uses the device camera, detects the artwork (painting/statue) in the scene (MediaPipe ObjectDetector), produces a visual embedding (TensorFlow.js + MobileNet), and performs client-side matching;
+- a FastAPI backend that exposes the catalog and descriptors, along with admin endpoints to insert/update artworks and descriptors in the database (Postgres/Supabase).
 
 ## Deployment
-- frontend su [Render](https://artlens-frontend.onrender.com)
-- backend su [Railway](https://artlens-production-a8a7.up.railway.app)
+- frontend on [Render](https://artlens-frontend.onrender.com)
+- backend on [Railway](https://artlens-production-a8a7.up.railway.app)
 
-## Panoramica e architettura
+## Overview and architecture
 - Frontend (frontend/public):
-  - index.html: landing con pulsanti “Scan Artwork” e “Curator Login”.
-  - scanner.html: pagina con video camera, overlay e UI dettagli. Carica:
-    - MediaPipe Tasks Vision (ObjectDetector) per rilevamento oggetti da modello TFLite locale (public/models/last_model.tflite);
-    - TensorFlow.js + MobileNet per generare embedding 224×224 L2-normalizzati;
-    - codice JS (src/js) per matching locale contro gli embedding scaricati dal backend.
-  - curator_access.html / curator_dashboard.html: accesso demo e dashboard per inserire opere. La dashboard calcola gli embedding lato client e li invia al backend.
+  - index.html: landing page with “Scan Artwork” and “Curator Login” buttons.
+  - scanner.html: page with camera video, overlay, and detailed UI. It loads:
+    - MediaPipe Tasks Vision (ObjectDetector) for object detection from a local TFLite model (public/models/last_model.tflite);
+    - TensorFlow.js + MobileNet to generate 224×224 L2‑normalized embeddings;
+    - JS code (src/js) for local matching against embeddings downloaded from the backend.
+  - curator_access.html / curator_dashboard.html: demo access and a dashboard to insert artworks. The dashboard computes embeddings client‑side and sends them to the backend.
 - Backend (backend/):
-  - FastAPI con endpoint pubblici per catalogo e descrittori e endpoint admin per upsert/cancellazione.
-  - Connessione a Postgres (Supabase) via SQLAlchemy.
-  - Cache in memoria dei dati per risposte rapide; opzionale persistenza su disco.
+  - FastAPI with public endpoints for catalog and descriptors, and admin endpoints for upsert/delete.
+  - Connection to Postgres (Supabase) via SQLAlchemy.
+  - In‑memory data cache for fast responses; optional on‑disk persistence.
 
-## Esecuzione locale con Docker
-Prerequisiti:
-- Docker Desktop (o Colima/OrbStack) installato e in esecuzione
+## Run locally with Docker
+Prerequisites:
+- Docker Desktop (or Colima/OrbStack) installed and running
 
-1) Crea un file `.env` nella root del progetto (non committare credenziali reali):
+1) Create a `.env` file at the project root (do not commit real credentials):
 ```
 SUPABASE_DB_URL=postgresql://<user>:<pass>@<host>:5432/<db>?sslmode=require
 ADMIN_TOKEN=artlens_admin
@@ -33,63 +33,63 @@ FRONTEND_ORIGINS=http://localhost:8080,http://127.0.0.1:8080
 ENABLE_DISK_CACHE=true
 ```
 
-2) Avvia lo stack con Docker Compose:
+2) Start the stack with Docker Compose:
 ```
 docker compose up -d --build
 ```
 - Frontend: http://localhost:8080
 - Backend:  http://localhost:8000/health
-- Proxy API: http://localhost:8080/api/health (passa da Nginx del frontend → backend)
+- Proxy API: http://localhost:8080/api/health (goes through the frontend’s Nginx → backend)
 
-Note importanti:
-- Il frontend è servito da Nginx (frontend/nginx.conf). Le API sono esposte come `/api/...` e inoltrate al servizio `backend:8000`, così non serve CORS in locale.
-- Il valore `ADMIN_TOKEN` del backend deve corrispondere a quello usato dal frontend per le operazioni admin (vedi sezione Dashboard). 
-- Se vedi problemi di cache del browser dopo un rebuild del frontend, usa Hard Reload (Ctrl/Cmd+Shift+R).
+Important notes:
+- The frontend is served by Nginx (frontend/nginx.conf). APIs are exposed under `/api/...` and forwarded to the `backend:8000` service, so CORS is not needed locally.
+- The backend `ADMIN_TOKEN` value must match the one used by the frontend for admin operations (see the Dashboard section).
+- If you see browser cache issues after rebuilding the frontend, use Hard Reload (Ctrl/Cmd+Shift+R).
 
-Troubleshooting rapido:
-- Docker non parte → avvia Docker Desktop. `docker info` deve funzionare.
-- 401 sugli endpoint admin → controlla che l’header X-Admin-Token inviato dal frontend coincida con `ADMIN_TOKEN` nel `.env`.
-- CORS in locale → assicurati di usare `/api` (default del frontend) e non un dominio esterno.
+Quick troubleshooting:
+- Docker won’t start → start Docker Desktop. `docker info` must work.
+- 401 on admin endpoints → ensure the X-Admin-Token header sent by the frontend matches `ADMIN_TOKEN` in `.env`.
+- Local CORS → make sure you use `/api` (the frontend default) and not an external domain.
 
 ---
 
-## Utilizzo
+## Usage
 
-### Utente (Scanner)
-- Dalla home (index.html) clicca “Scan Artwork” (apre scanner.html):
-  - Concedi il permesso della fotocamera.
-  - Il riquadro verde appare quando il modello rileva un’opera.
-  - Il sistema calcola un embedding con MobileNet e fa matching con il DB locale (scaricato dal backend). Mostra titolo, artista, descrizione e confidenza.
-  - Localizzazione IT/EN disponibile dalla barra linguaggio.
+### User (Scanner)
+- From the home page (index.html) click “Scan Artwork” (opens scanner.html):
+  - Grant camera permission.
+  - A green box appears when the model detects an artwork.
+  - The system computes an embedding with MobileNet and matches it against the local DB (downloaded from the backend). It displays title, artist, description, and confidence.
+  - IT/EN localization is available from the language bar.
 
-### Curatore (Dashboard)
-- Accesso demo: curator_access.html (credenziali demo salvate in localStorage: email curator@museum.com, password tesi2025). È solo per scopi dimostrativi.
+### Curator (Dashboard)
+- Demo access: curator_access.html (demo credentials saved in localStorage: email curator@museum.com, password tesi2025). This is for demonstration purposes only.
 - Dashboard: curator_dashboard.html
-  1. Carica una o più immagini dell’opera.
-  2. Inserisci metadati (titolo, artista, anno, museo, location) e descrizioni (IT/EN).
-  3. Al salvataggio, il browser calcola gli embedding (224×224, L2) e invia un JSON a POST /artworks con header X-Admin-Token impostato automaticamente dal frontend (nessun prompt). Assicurati che corrisponda a `ADMIN_TOKEN` sul backend.
-  4. Il backend salva metadati + descrittori nel DB e aggiorna la cache; il frontend ricarica il DB.
-  5. Se serve, usa la tab “Manage Collection” per consultare e gestire la collezione (richiede le API attive; include azioni come fetch dettagli /artworks/{id} e delete).
+  1. Upload one or more images of the artwork.
+  2. Enter metadata (title, artist, year, museum, location) and descriptions (IT/EN).
+  3. On save, the browser computes embeddings (224×224, L2) and sends a JSON to POST /artworks with the X-Admin-Token header set automatically by the frontend (no prompt). Make sure it matches `ADMIN_TOKEN` on the backend.
+  4. The backend stores metadata + descriptors in the DB and updates the cache; the frontend reloads the DB.
+  5. If needed, use the “Manage Collection” tab to browse and manage the collection (requires the APIs to be running; includes actions such as fetch details /artworks/{id} and delete).
 
 
-## API del backend (principali)
-- GET /health: stato backend, numero descrittori e dimensione embedding.
-- GET /health_db: verifica connessione a DB (conteggio opere o errore sintetico).
-- GET /catalog[?with_image_counts=true]: lista opere (id, title, artist, year, museum, location, descriptions).
-- GET /descriptors: mappa { artwork_id: embedding[] } (un solo descrittore per opera).
-- GET /descriptors_v2: mappa { artwork_id: [ [..emb1..], [..emb2..] ] } (tutti i descrittori per opera).
-- GET /descriptors_meta_v2: lista con artwork_id, descriptor_id, image_path, embedding.
-- POST /match: { embedding: float[], top_k, threshold, lang } -> matches[] (non usato dal frontend di default, che fa matching locale, ma utile per client esterni).
-- POST /log_perf: endpoint per telemetria prestazioni (attivabile con ?telemetry=1 nel frontend).
+## Backend APIs (main)
+- GET /health: backend status, number of descriptors, and embedding dimension.
+- GET /health_db: check DB connection (artwork count or concise error).
+- GET /catalog[?with_image_counts=true]: list of artworks (id, title, artist, year, museum, location, descriptions).
+- GET /descriptors: map { artwork_id: embedding[] } (one descriptor per artwork).
+- GET /descriptors_v2: map { artwork_id: [ [..emb1..], [..emb2..] ] } (all descriptors per artwork).
+- GET /descriptors_meta_v2: list with artwork_id, descriptor_id, image_path, embedding.
+- POST /match: { embedding: float[], top_k, threshold, lang } -> matches[] (not used by the default frontend, which does local matching, but useful for external clients).
+- POST /log_perf: endpoint for performance telemetry (enabled via ?telemetry=1 in the frontend).
 
-Endpoint admin (richiedono header X-Admin-Token uguale a ADMIN_TOKEN):
-- POST /artworks: upsert opera e descrittori. Accetta payload come:
+Admin endpoints (require X-Admin-Token header equal to ADMIN_TOKEN):
+- POST /artworks: upsert artwork and descriptors. Accepts payload like:
   ```json
   {
-    "title": "Ritratto di soggetto",
-    "artist": "Nome Artista",
-    "year": "1620 ca.",
-    "museum": "Museo Esempio",
+    "title": "Portrait of a subject",
+    "artist": "Artist Name",
+    "year": "c. 1620",
+    "museum": "Example Museum",
     "location": "Room 2",
     "descriptions": { "it": "Descrizione in italiano", "en": "Description in English" },
     "visual_descriptors": [
@@ -98,13 +98,13 @@ Endpoint admin (richiedono header X-Admin-Token uguale a ADMIN_TOKEN):
     ]
   }
   ```
-- GET /artworks/{id}: dettaglio opera (inclusa lista dei descriptor_id).
-- DELETE /artworks/{id}: rimuove l’opera (cascade sui descrittori).
-- DELETE /artworks/{id}/descriptors/{descriptor_id}: rimuove un singolo descrittore.
+- GET /artworks/{id}: artwork detail (including the list of descriptor_id).
+- DELETE /artworks/{id}: remove the artwork (cascade delete on descriptors).
+- DELETE /artworks/{id}/descriptors/{descriptor_id}: remove a single descriptor.
 
 
-## Schema DB atteso (SQL di esempio)
-Il backend si aspetta tre tabelle: settings, artworks, descriptors. Esempio compatibile con Postgres/Supabase:
+## Expected DB schema (example SQL)
+The backend expects three tables: settings, artworks, descriptors. Example compatible with Postgres/Supabase:
 ```sql
 create table if not exists settings (
   key text primary key,
@@ -129,54 +129,54 @@ create table if not exists descriptors (
   primary key (artwork_id, descriptor_id)
 );
 ```
-Note:
-- Alla prima upsert, il backend salva in settings.key='db_dim' la dimensione embedding osservata; successivi inserimenti devono avere la stessa dimensione.
-- Gli embedding sono L2-normalizzati (cosine = dot product).
+Notes:
+- On the first upsert, the backend saves the observed embedding dimension in settings.key='db_dim'; subsequent inserts must have the same dimension.
+- Embeddings are L2‑normalized (cosine = dot product).
 
 
-## Come funziona (pipeline)
-1. Rilevamento: MediaPipe ObjectDetector (modello TFLite in public/models/last_model.tflite) individua il riquadro dell’opera.
-2. Preprocessing: il riquadro viene ritagliato e ridimensionato a 224×224.
-3. Embedding: TensorFlow.js MobileNet (versione 2, alpha 1.0) genera un vettore di caratteristiche; il vettore viene L2-normalizzato.
-4. Matching: lato client si scarica il DB di embedding dal backend (/descriptors_v2 + /catalog). Si calcola la similitudine come prodotto scalare (coseno). Soglia e limiti dal file src/js/constants.js (es. COSINE_THRESHOLD).
-5. UI: viene mostrato titolo, artista, descrizione (in IT/EN in base alla lingua) e la confidenza. Facoltativamente si registra telemetria verso /log_perf.
+## How it works (pipeline)
+1. Detection: MediaPipe ObjectDetector (TFLite model in public/models/last_model.tflite) finds the artwork bounding box.
+2. Preprocessing: the box is cropped and resized to 224×224.
+3. Embedding: TensorFlow.js MobileNet (version 2, alpha 1.0) generates a feature vector; the vector is L2‑normalized.
+4. Matching: on the client, the embedding DB is downloaded from the backend (/descriptors_v2 + /catalog). Similarity is computed as dot product (cosine). Thresholds and limits are in src/js/constants.js (e.g., COSINE_THRESHOLD).
+5. UI: title, artist, description (in IT/EN based on the selected language) and confidence are shown. Optionally, telemetry is recorded to /log_perf.
 
 
-## Configurazione
-- Variabili d’ambiente backend:
-  - SUPABASE_DB_URL (obbligatoria)
-  - ADMIN_TOKEN (obbligatoria per admin)
-  - FRONTEND_ORIGINS (opzionale, CSV)
+## Configuration
+- Backend environment variables:
+  - SUPABASE_DB_URL (required)
+  - ADMIN_TOKEN (required for admin)
+  - FRONTEND_ORIGINS (optional, CSV)
   - ENABLE_DISK_CACHE=true|false (default true)
-  - DISK_CACHE_PATH (opzionale)
+  - DISK_CACHE_PATH (optional)
 - Frontend:
-  - Imposta window.BACKEND_URL in scanner.html/curator_dashboard.html per specificare l’URL backend (default http://localhost:8000).
-  - Modello TFLite: public/models/last_model.tflite. Puoi aggiornarlo sostituendo il file; assicurati coerenza con il tipo di oggetti da rilevare.
-  - Parametri: vedi src/js/constants.js (COSINE_THRESHOLD, MIN_BOX_SCORE, CROP_SIZE, ecc.).
+  - Set window.BACKEND_URL in scanner.html/curator_dashboard.html to specify the backend URL (default http://localhost:8000).
+  - TFLite model: public/models/last_model.tflite. You can update it by replacing the file; make sure it’s consistent with the types of objects to detect.
+  - Parameters: see src/js/constants.js (COSINE_THRESHOLD, MIN_BOX_SCORE, CROP_SIZE, etc.).
 
 ## Troubleshooting
-- La fotocamera non parte:
-  - Usa un server HTTP (non file://). Su domini pubblici serve HTTPS; in locale localhost è ok.
-  - Controlla permessi del browser e che non sia in un iFrame non consentito.
-- CORS error dal frontend:
-  - Aggiungi l’origine del tuo server statico in FRONTEND_ORIGINS e riavvia il backend.
-- Nessun risultato/matching vuoto:
-  - Il DB potrebbe essere vuoto: usa la dashboard del curatore per inserire opere.
-  - Verifica che /catalog e /descriptors_v2 rispondano e che ci siano embedding.
-- Mismatch dimensione embedding:
-  - Assicurati che gli embedding nel DB siano generati con la stessa MobileNet/224 e normalizzazione. Se lo schema è stato popolato con un modello diverso, rigenera o svuota/ricrea i descrittori.
-- Errore 401 sugli endpoint admin:
-  - Verifica che l’header X-Admin-Token corrisponda a ADMIN_TOKEN.
-- Connessione DB fallita:
-  - Controlla SUPABASE_DB_URL (usa driver psycopg v3; sslmode=require in Supabase).
+- The camera doesn’t start:
+  - Use an HTTP server (not file://). On public domains you need HTTPS; locally, localhost is fine.
+  - Check browser permissions and that it’s not inside a disallowed iFrame.
+- CORS error from the frontend:
+  - Add your static server’s origin to FRONTEND_ORIGINS and restart the backend.
+- No results/empty matching:
+  - The DB might be empty: use the curator dashboard to insert artworks.
+  - Verify that /catalog and /descriptors_v2 respond and that embeddings are present.
+- Embedding dimension mismatch:
+  - Ensure the embeddings in the DB were generated with the same MobileNet/224 and normalization. If the schema was populated with a different model, regenerate or clear/recreate descriptors.
+- 401 error on admin endpoints:
+  - Verify that the X-Admin-Token header matches ADMIN_TOKEN.
+- DB connection failed:
+  - Check SUPABASE_DB_URL (uses psycopg v3 driver; sslmode=require on Supabase).
 
 
-## Struttura del progetto (principale)
+## Project structure (main)
 - backend/
   - app.py (API, cache, matching, admin)
-  - service.py (upsert e normalizzazione, coerenza dimensioni)
-  - db.py (connessione SQLAlchemy)
+  - service.py (upsert and normalization, dimension consistency)
+  - db.py (SQLAlchemy connection)
   - requirements.txt
 - frontend/
-  - public/ (pagine HTML, CSS, immagini, modelli .tflite)
-  - src/js/ (logica scanner, embedding, matching, UI, dashboard)
+  - public/ (HTML pages, CSS, images, .tflite models)
+  - src/js/ (scanner logic, embedding, matching, UI, dashboard)
