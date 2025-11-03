@@ -104,9 +104,8 @@ async function loadOptionB_v2() {
         title: art.title,
         artist: art.artist,
         year: art.year,
-        museum: art.museum,
-        location: art.location,
         descriptions: art.descriptions,
+        location_coords: art.location_coords,
         image_path: art?.visual_descriptors?.[i]?.image_path,
         embedding: norm,
       });
