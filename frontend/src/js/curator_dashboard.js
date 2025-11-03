@@ -7,6 +7,276 @@ const ADMIN_TOKEN_FIXED = 'artlens_admin';
 const submitBtn = document.getElementById('submitBtn');
 const statusEl = document.getElementById('statusMsg');
 
+// === MAPPA OPENLAYERS ===
+let selectedCoordinates = null; // qui salveremo l'array [[lat, lon], ...]
+
+// === FUNZIONE: inizializza e mostra la mappa ===
+function initMapOverlay(existingGeoJSON = null) {
+
+  if (window.currentMap) {
+    try {
+      window.currentMap.setTarget(null); // distrugge la mappa vecchia
+    } catch (_) {}
+    window.currentMap = null;
+  }
+
+  const overlay = document.getElementById("mapOverlay");
+  overlay.style.display = "flex";
+
+  const MAX_SEGMENT_LENGTH_METERS = 1.0;
+
+  const map = new ol.Map({
+    target: "map",
+    layers: [new ol.layer.Tile({ source: new ol.source.OSM() })],
+    view: new ol.View({
+      center: ol.proj.fromLonLat([12.0409, 44.2220]), // 📍 Forlì
+      zoom: 16,
+    }),
+  });
+
+  window.currentMap = map;
+
+  // === Sorgenti e layer ===
+  const polySource = new ol.source.Vector({ wrapX: false });
+  const pointsSource = new ol.source.Vector({ wrapX: false });
+
+  const polyLayer = new ol.layer.Vector({
+    source: polySource,
+    style: new ol.style.Style({
+      stroke: new ol.style.Stroke({ color: "rgba(0,128,255,0.8)", width: 2 }),
+      fill: new ol.style.Fill({ color: "rgba(0,128,255,0.15)" }),
+    }),
+  });
+
+  const pointsLayer = new ol.layer.Vector({
+    source: pointsSource,
+    style: new ol.style.Style({
+      image: new ol.style.Circle({
+        radius: 4,
+        fill: new ol.style.Fill({ color: "red" }),
+        stroke: new ol.style.Stroke({ color: "white", width: 1 }),
+      }),
+    }),
+  });
+
+  map.addLayer(polyLayer);
+  map.addLayer(pointsLayer);
+
+  // === Se esistono coordinate salvate, disegnale ===
+  if (existingGeoJSON) {
+      if (existingGeoJSON.type === "Point") {
+          const [lon, lat] = existingGeoJSON.coordinates;
+          const feature = new ol.Feature(
+              new ol.geom.Point(ol.proj.fromLonLat([lon, lat]))
+          );
+          pointsSource.addFeature(feature);
+          map.getView().setCenter(ol.proj.fromLonLat([lon, lat]));
+          map.getView().setZoom(16);
+      }
+      else if (existingGeoJSON.type === "Polygon") {
+          const coords = existingGeoJSON.coordinates[0].map(([lon, lat]) =>
+              ol.proj.fromLonLat([lon, lat])
+          );
+          const feature = new ol.Feature(new ol.geom.Polygon([coords]));
+          polySource.addFeature(feature);
+          map.getView().fit(feature.getGeometry(), { padding: [30, 30, 30, 30] });
+      }
+  }
+
+
+  let drawInteraction = null;
+  let pointInteraction = null;
+
+  // === Funzione di densificazione (interpola punti ogni 1m) ===
+  function densifyRingByDistance(ring, maxDistanceMeters) {
+    if (!ring || ring.length < 4) return ring;
+    const isClosed =
+      ring.length > 2 &&
+      ring[0][0] === ring[ring.length - 1][0] &&
+      ring[0][1] === ring[ring.length - 1][1];
+    const coords = isClosed ? ring.slice(0, -1) : ring.slice();
+    const densified = [];
+
+    for (let i = 0; i < coords.length; i++) {
+      const a = coords[i];
+      const b = coords[(i + 1) % coords.length];
+      densified.push(a);
+
+      const [lon1, lat1] = ol.proj.toLonLat(a);
+      const [lon2, lat2] = ol.proj.toLonLat(b);
+      const segLen = ol.sphere.getDistance([lon1, lat1], [lon2, lat2]);
+
+      const nExtra = Math.floor(segLen / maxDistanceMeters);
+      for (let k = 1; k <= nExtra; k++) {
+        const t = k / (nExtra + 1);
+        densified.push([a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]);
+      }
+    }
+
+    densified.push(densified[0]);
+    return densified;
+  }
+
+  // === Disegno poligono ===
+  function toggleDrawingMode(enable) {
+    // 🧹 reset layer
+    polySource.clear();
+    pointsSource.clear();
+
+    if (enable) {
+      if (drawInteraction) map.removeInteraction(drawInteraction);
+      if (pointInteraction) map.removeInteraction(pointInteraction);
+
+      drawInteraction = new ol.interaction.Draw({
+        source: polySource,
+        type: "Polygon",
+      });
+
+      drawInteraction.on("drawend", (e) => {
+        const geom = e.feature.getGeometry();
+        const rings = geom.getCoordinates();
+        const densified = densifyRingByDistance(
+          rings[0],
+          MAX_SEGMENT_LENGTH_METERS
+        );
+
+        e.feature.setGeometry(new ol.geom.Polygon([densified]));
+        pointsSource.clear();
+        densified.forEach(([x, y]) =>
+          pointsSource.addFeature(new ol.Feature(new ol.geom.Point([x, y])))
+        );
+      });
+
+      map.addInteraction(drawInteraction);
+    } else if (drawInteraction) {
+      map.removeInteraction(drawInteraction);
+      drawInteraction = null;
+    }
+  }
+
+  // === Disegno punto singolo ===
+  function toggleAddPointMode(enable) {
+    // 🧹 reset layer
+    polySource.clear();
+    pointsSource.clear();
+
+    if (enable) {
+      if (drawInteraction) map.removeInteraction(drawInteraction);
+      if (pointInteraction) map.removeInteraction(pointInteraction);
+
+      pointInteraction = new ol.interaction.Draw({
+        source: pointsSource,
+        type: "Point",
+      });
+
+      map.addInteraction(pointInteraction);
+    } else if (pointInteraction) {
+      map.removeInteraction(pointInteraction);
+      pointInteraction = null;
+    }
+  }
+
+  // Permetti di modificare la geometria esistente
+  const modify = new ol.interaction.Modify({
+    source: polySource.getFeatures().length ? polySource : pointsSource,
+  });
+  map.addInteraction(modify);
+
+  modify.on("modifyend", (e) => {
+      const features = e.features.getArray();
+      features.forEach((f) => {
+          const geom = f.getGeometry();
+          if (geom.getType() === "Polygon") {
+              const rings = geom.getCoordinates();
+              const densified = densifyRingByDistance(
+                  rings[0],
+                  MAX_SEGMENT_LENGTH_METERS
+              );
+
+              // aggiorna geometria
+              f.setGeometry(new ol.geom.Polygon([densified]));
+
+              // aggiorna i punti visivi
+              pointsSource.clear();
+              densified.forEach(([x, y]) =>
+                  pointsSource.addFeature(new ol.Feature(new ol.geom.Point([x, y])))
+              );
+          }
+      });
+  });
+
+
+
+  // === Eventi bottoni ===
+  document.getElementById("drawBtn").onclick = () => toggleDrawingMode(true);
+  document.getElementById("undoBtn").onclick = () => {
+    if (drawInteraction) drawInteraction.removeLastPoint();
+  };
+  document.getElementById("addPointBtn").onclick = () =>
+    toggleAddPointMode(true);
+  document.getElementById("clearBtn").onclick = () => {
+    polySource.clear();
+    pointsSource.clear();
+  };
+  document.getElementById("closeMapBtn").onclick = () => {
+    overlay.style.display = "none";
+    if (window.currentMap) {
+      window.currentMap.setTarget(null);
+      window.currentMap = null;
+    }
+  };
+
+  // ✅ Conferma coordinate
+  document.getElementById("confirmBtn").onclick = () => {
+      let geojson = null;
+
+      // Se c'è un poligono
+      const polyFeatures = polySource.getFeatures();
+      const pointFeatures = pointsSource.getFeatures();
+
+      if (polyFeatures.length > 0) {
+          const f = polyFeatures[0];
+          const coords = f.getGeometry().getCoordinates()[0].map(([x, y]) =>
+              ol.proj.toLonLat([x, y])
+          );
+
+          // chiudi anello se non chiuso
+          const first = coords[0];
+          const last = coords[coords.length - 1];
+          if (first[0] !== last[0] || first[1] !== last[1]) coords.push(first);
+
+          geojson = {
+              type: "Polygon",
+              coordinates: [coords],
+          };
+      }
+
+      // Se c'è un punto
+      else if (pointFeatures.length > 0) {
+          const f = pointFeatures[0];
+          const [x, y] = f.getGeometry().getCoordinates();
+          const [lon, lat] = ol.proj.toLonLat([x, y]);
+          geojson = {
+              type: "Point",
+              coordinates: [lon, lat],
+          };
+      }
+
+      if (!geojson) {
+          alert("⚠️ Nessuna geometria selezionata!");
+          return;
+      }
+
+      selectedCoordinates = geojson; // ora è un oggetto GeoJSON
+      const hiddenInput = document.getElementById("location_coords");
+      if (hiddenInput) hiddenInput.value = JSON.stringify(geojson);
+
+      overlay.style.display = "none";
+      console.log("✅ GeoJSON salvato:", geojson);
+  };
+
+}
+
 
 
 function setStatus(msg) {
@@ -79,9 +349,8 @@ async function onSubmit(e) {
       title: (fd.get('title') || '').trim() || null,
       artist: (fd.get('artist') || '').trim() || null,
       year: (fd.get('year') || '').trim() || null,
-      museum: (fd.get('museum') || '').trim() || null,
-      location: (fd.get('location') || '').trim() || null,
       descriptions: buildDescriptions(fd),
+      location_coords: selectedCoordinates || null,
       visual_descriptors,
     };
 
@@ -120,6 +389,12 @@ async function onSubmit(e) {
   }
 }
 
+// === APRI MAPPA ===
+document.getElementById("openMapBtn").addEventListener("click", () => {
+  initMapOverlay();
+});
+
+
 const formEl = document.getElementById('f');
 if (formEl) formEl.addEventListener('submit', onSubmit);
 
@@ -144,8 +419,6 @@ if (formEl) formEl.addEventListener('submit', onSubmit);
         title: { label: 'Titolo', ph: 'Inserisci il titolo dell\'opera' },
         artist: { label: 'Artista', ph: 'Inserisci il nome dell\'artista' },
         year: { label: 'Anno', ph: 'es. 1620 ca.' },
-        museum: { label: 'Museo', ph: 'es. Uffizi' },
-        location: { label: 'Posizione', ph: 'Sala / Collocazione' },
         desc_it: { label: 'Descrizione IT', ph: 'Descrizione in italiano' },
         desc_en: { label: 'Descrizione EN', ph: 'Descrizione in inglese' }
       },
@@ -163,7 +436,7 @@ if (formEl) formEl.addEventListener('submit', onSubmit);
         confirmDeleteArtwork: 'Eliminare questa opera? L’operazione non può essere annullata.',
         editArtwork: 'Modifica Opera',
         close: 'Chiudi',
-        fieldLabels: { Title:'Titolo', Artist:'Artista', Year:'Anno', Museum:'Museo', Location:'Posizione', ItalianDescription:'Descrizione Italiana', EnglishDescription:'Descrizione Inglese' },
+        fieldLabels: { Title:'Titolo', Artist:'Artista', Year:'Anno', ItalianDescription:'Descrizione Italiana', EnglishDescription:'Descrizione Inglese' },
         imageFiles: 'File Immagine',
         add: 'Aggiungi',
         cancel: 'Annulla',
@@ -189,8 +462,6 @@ if (formEl) formEl.addEventListener('submit', onSubmit);
         title: { label: 'Title', ph: 'Enter artwork title' },
         artist: { label: 'Artist', ph: 'Enter artist name' },
         year: { label: 'Year', ph: 'e.g., 1620 ca.' },
-        museum: { label: 'Museum', ph: 'e.g., Uffizi' },
-        location: { label: 'Location', ph: 'Room / Placement' },
         desc_it: { label: 'IT description', ph: 'Description in Italian' },
         desc_en: { label: 'EN description', ph: 'Description in English' }
       },
@@ -208,7 +479,7 @@ if (formEl) formEl.addEventListener('submit', onSubmit);
         confirmDeleteArtwork: 'Delete this artwork? This cannot be undone.',
         editArtwork: 'Edit Artwork',
         close: 'Close',
-        fieldLabels: { Title:'Title', Artist:'Artist', Year:'Year', Museum:'Museum', Location:'Location', ItalianDescription:'Italian Description', EnglishDescription:'English Description' },
+        fieldLabels: { Title:'Title', Artist:'Artist', Year:'Year', ItalianDescription:'Italian Description', EnglishDescription:'English Description' },
         imageFiles: 'Image Files',
         add: 'Add',
         cancel: 'Cancel',
@@ -285,8 +556,6 @@ if (formEl) formEl.addEventListener('submit', onSubmit);
       { id: 'title', key: 'title' },
       { id: 'artist', key: 'artist' },
       { id: 'year', key: 'year' },
-      { id: 'museum', key: 'museum' },
-      { id: 'location', key: 'location' },
       { id: 'desc_it', key: 'desc_it' },
       { id: 'desc_en', key: 'desc_en' }
     ];
@@ -511,14 +780,6 @@ if (formEl) formEl.addEventListener('submit', onSubmit);
               <div class="md-label">${trm.fieldLabels.Year}</div>
               <input id="md_year" class="md-input" />
             </div>
-            <div>
-              <div class="md-label">${trm.fieldLabels.Museum}</div>
-              <input id="md_museum" class="md-input" />
-            </div>
-            <div class="full">
-              <div class="md-label">${trm.fieldLabels.Location}</div>
-              <input id="md_location" class="md-input" />
-            </div>
             <div class="full">
               <div class="md-label">${trm.fieldLabels.ItalianDescription}</div>
               <textarea id="md_desc_it" class="md-textarea"></textarea>
@@ -527,6 +788,11 @@ if (formEl) formEl.addEventListener('submit', onSubmit);
               <div class="md-label">${trm.fieldLabels.EnglishDescription}</div>
               <textarea id="md_desc_en" class="md-textarea"></textarea>
             </div>
+            <div class="full">
+              <button id="editMapBtn" class="btn-primary" type="button">🌍 Modifica posizione su mappa</button>
+              <input type="hidden" id="md_location_coords" />
+            </div>
+
           </div>
 
           <div class="file-sec">
@@ -569,11 +835,19 @@ if (formEl) formEl.addEventListener('submit', onSubmit);
     $('#md_title').value = data.title || '';
     $('#md_artist').value = data.artist || '';
     $('#md_year').value = data.year || '';
-    $('#md_museum').value = data.museum || '';
-    $('#md_location').value = data.location || '';
     const desc = (data.descriptions && typeof data.descriptions === 'object') ? data.descriptions : {};
     $('#md_desc_it').value = desc.it || '';
     $('#md_desc_en').value = desc.en || '';
+
+    // === Pulsante per aprire mappa ===
+    const editMapBtn = ov.querySelector('#editMapBtn');
+    const hiddenCoords = ov.querySelector('#md_location_coords');
+    if (editMapBtn) {
+      editMapBtn.addEventListener('click', () => {
+        // Passa le coordinate esistenti (GeoJSON) se ci sono
+        initMapOverlay(data.location_coords);
+      });
+    }
 
     const listEl = $('#md_file_list');
     const hiddenFile = $('#md_hidden_file');
@@ -661,9 +935,8 @@ if (formEl) formEl.addEventListener('submit', onSubmit);
         title: ($('#md_title').value || '').trim() || null,
         artist: ($('#md_artist').value || '').trim() || null,
         year: ($('#md_year').value || '').trim() || null,
-        museum: ($('#md_museum').value || '').trim() || null,
-        location: ($('#md_location').value || '').trim() || null,
         descriptions: buildDescriptions(),
+        location_coords: selectedCoordinates || data.location_coords || null,
         visual_descriptors: pending.map(p=> ({ id: p.id, embedding: Array.isArray(p.embedding) ? p.embedding : Array.from(p.embedding || []) }))
       };
       try {
