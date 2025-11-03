@@ -29,6 +29,46 @@ try {
   });
 } catch {}
 
+
+
+function haversineDistance(lat1, lon1, lat2, lon2) {
+  const R = 6371; // raggio Terra in km
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1 * Math.PI / 180) *
+    Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(a));
+}
+
+function geojsonHasNearbyPoint(geojson, user, radiusKm = 1.0) {
+  if (!geojson || !geojson.type || !user?.lat || !user?.lon) return false;
+  const checkPoint = (coords) => {
+    if (!Array.isArray(coords) || coords.length < 2) return false;
+    const [lon, lat] = coords;
+    const dist = haversineDistance(user.lat, user.lon, lat, lon);
+    return dist <= radiusKm;
+  };
+
+  switch (geojson.type) {
+    case 'Point':
+      return checkPoint(geojson.coordinates);
+    case 'MultiPoint':
+      return geojson.coordinates.some(checkPoint);
+    case 'FeatureCollection':
+      return geojson.features?.some(f => f.geometry?.type === 'Point' && checkPoint(f.geometry.coordinates));
+    case 'Feature':
+      if (geojson.geometry?.type === 'Point')
+        return checkPoint(geojson.geometry.coordinates);
+      break;
+  }
+  return false;
+}
+
+
+
 // Visual styling constants for bounding box and label placement
 const CORNER_LEN_FACTOR = 0.085; // bracket length as fraction of min(w,h)
 const CORNER_OFFSET = 6;         // gap between rounded box and corner brackets
@@ -267,6 +307,22 @@ function drawCapsuleLabel(ctx, x, y, text, badge) {
 
 function findBestMatch(embedding) {
   if (!artworkDB.length || !embedding || typeof embedding.length !== 'number') return null;
+
+  // --- 👇 AGGIUNTA: FILTRO GEOLOCALIZZATO ---
+  const RADIUS_KM = 0.5; // puoi regolare il raggio
+  const user = window.userCoords;
+  let candidates = artworkDB;
+
+  if (user && user.lat && user.lon) {
+    candidates = artworkDB.filter(e =>
+      geojsonHasNearbyPoint(e.location_coords, user, RADIUS_KM)
+    );
+    console.log(`Filtrate ${candidates.length} opere vicine (${RADIUS_KM} km)`);
+  }
+
+  if (!candidates.length) return null;
+  // --- 👆 FINE AGGIUNTA ---
+
   const N = artworkDB.length;
   const dim = embedding.length;
   let bestIdx = -1;

@@ -5,6 +5,27 @@ import { initEmbeddingModel } from './embedding.js';
 import { loadArtworkDB, pickLangText, getLang, setLang } from './db.js';
 import { drawDetections, getLastMatches, resetRenderState } from './render.js';
 
+
+let userCoords = null;
+
+async function getUserPosition() {
+  return new Promise((resolve, reject) => {
+    if (!navigator.geolocation) return reject('Geolocation non supportata');
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const { latitude, longitude } = pos.coords;
+        userCoords = { lat: latitude, lon: longitude };
+        console.log('Posizione utente:', userCoords);
+        resolve(userCoords);
+      },
+      (err) => reject(err),
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
+    );
+  });
+}
+
+
+
 // Language toggle setup
 // Minimal i18n dictionary helper so we can reuse strings outside applyLanguageToUI
 function getI18n(lang) {
@@ -12,54 +33,50 @@ function getI18n(lang) {
   const dict = {
     it: {
       // Scanner UI strings
-      title: "Scopri l'arte intorno a te",
-      status: "Inquadra le opere con la fotocamera",
+      title: "Scopri i monumenti intorno a te",
+      status: "Inquadra i monumenti con la fotocamera",
       start: "Avvia",
       back: "Indietro",
       activation: {
         title: "Attivazione fotocamera",
-        subHTML: "Preparati a <span class=\"accent\">inquadrare l’opera</span> con la fotocamera",
+        subHTML: "Preparati a <span class=\"accent\">inquadrare il monumento</span> con la fotocamera",
         permNeeded: "Autorizzazione fotocamera necessaria"
       },
-      scannerHeader: { title: "Scansione Opera" },
+      scannerHeader: { title: "Scansione monumento" },
       detail: {
         artist: "Artista",
         year: "Anno",
-        museum: "Museo",
-        location: "Luogo",
         description: "Descrizione",
         close: "Chiudi"
       },
       // Homepage strings
       home: {
-        subtitle: "Scopri l'arte attraverso la tecnologia",
-        scan: "Scansiona Opera",
+        subtitle: "Scopri i monumenti della tua città",
+        scan: "Scansiona Monumento",
         curator: "Accesso Curatore",
         foot: "Basato su un sistema di riconoscimento AI",
       }
     },
     en: {
-      title: "Discover art around you",
-      status: "Point the camera at artworks",
+      title: "Discover monuments around you",
+      status: "Point the camera at monuments",
       start: "Start",
       back: "Back",
       activation: {
         title: "Camera Activating",
-        subHTML: "Get ready to <span class=\"accent\">frame the artwork</span> in your camera view",
+        subHTML: "Get ready to <span class=\"accent\">frame the monument</span> in your camera view",
         permNeeded: "Camera permission needed"
       },
-      scannerHeader: { title: "Scan Artwork" },
+      scannerHeader: { title: "Scan monument" },
       detail: {
         artist: "Artist",
         year: "Year",
-        museum: "Museum",
-        location: "Location",
         description: "Description",
         close: "Close"
       },
       home: {
-        subtitle: "Discover art through technology",
-        scan: "Scan Artwork",
+        subtitle: "Discover your city's monuments",
+        scan: "Scan Monument",
         curator: "Curator Login",
         foot: "Powered by AI recognition system",
       }
@@ -126,11 +143,9 @@ function applyLanguageToUI() {
   if (detailCard && t.detail) {
     try {
       const rows = detailCard.querySelectorAll('.detail-rows .row');
-      // Expecting order: Artist, Year, Museum, Location
+      // Expecting order: Artist, Year
       if (rows[0]) rows[0].querySelector('.chip').textContent = t.detail.artist || 'Artist';
       if (rows[1]) rows[1].querySelector('.chip').textContent = t.detail.year || 'Year';
-      if (rows[2]) rows[2].querySelector('.chip').textContent = t.detail.museum || 'Museum';
-      if (rows[3]) rows[3].querySelector('.chip').textContent = t.detail.location || 'Location';
       // Description label is in a separate row directly under .detail-card
       const descChipEl = detailCard.querySelector(':scope > .row .chip');
       if (descChipEl && t.detail.description) descChipEl.textContent = t.detail.description;
@@ -243,8 +258,6 @@ function openDetail(entry, confidence) {
 
   setField(detailArtistEl, entry?.artist || '');
   setField(detailYearEl, entry?.year || '');
-  setField(detailMuseumEl, entry?.museum || '');
-  setField(detailLocationEl, entry?.location || '');
 
   const desc = entry?.descriptions ? (pickLangText(entry.descriptions) || '') : (entry?.description || '');
   if (detailBodyEl) detailBodyEl.textContent = desc;
@@ -358,6 +371,18 @@ async function runStartup() {
       requestAnimationFrame(tick);
     });
   }
+
+
+  status('Ottenendo la posizione utente…');
+  try {
+    await getUserPosition();
+    window.userCoords = userCoords; // 👈 serve per usarla in render.js
+  } catch (e) {
+    console.warn('Posizione non disponibile:', e);
+    userCoords = null;
+  }
+
+
 
   function hideActivate() {
     if (!activate) return;

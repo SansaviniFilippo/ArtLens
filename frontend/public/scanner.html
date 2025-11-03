@@ -62,8 +62,6 @@
         <div class="detail-rows">
           <div class="row"><span class="chip">Artist</span><span class="value" id="detailArtist"></span></div>
           <div class="row"><span class="chip">Year</span><span class="value" id="detailYear"></span></div>
-          <div class="row"><span class="chip">Museum</span><span class="value" id="detailMuseum"></span></div>
-          <div class="row"><span class="chip">Location</span><span class="value" id="detailLocation"></span></div>
         </div>
         <div class="detail-sep" role="separator" aria-hidden="true"></div>
         <div class="row"><span class="chip">Description</span></div>
@@ -79,9 +77,7 @@
   <script>
       if (!window.BACKEND_URL) {
           const isLocalhost = location.hostname === "localhost" || location.hostname === "127.0.0.1";
-          window.BACKEND_URL = isLocalhost
-              ? "/api"  // backend locale
-              : "https://artlens-production-a8a7.up.railway.app"; // backend produzione
+          window.BACKEND_URL = "/api";
       }
   </script>
 
