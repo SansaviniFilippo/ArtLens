@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>curator - dashboard</title>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://cdn.jsdelivr.net/npm/ol@v9.1.0/ol.css" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/ol@v9.1.0/dist/ol.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles/curator_dashboard.css">
 </head>
@@ -53,14 +55,6 @@
           <input id="year" class="input" name="year" placeholder="e.g., 1620 ca." />
         </div>
         <div class="field">
-          <label class="lbl" for="museum">Museum</label>
-          <input id="museum" class="input" name="museum" placeholder="e.g., Uffizi" />
-        </div>
-        <div class="field">
-          <label class="lbl" for="location">Location</label>
-          <input id="location" class="input" name="location" placeholder="Room / Placement" />
-        </div>
-        <div class="field">
           <label class="lbl" for="desc_it">IT description</label>
           <textarea id="desc_it" class="textarea" name="desc_it" placeholder="Descrizione in italiano"></textarea>
         </div>
@@ -68,6 +62,15 @@
           <label class="lbl" for="desc_en">EN description</label>
           <textarea id="desc_en" class="textarea" name="desc_en" placeholder="Description in English"></textarea>
         </div>
+        <!-- Bottone per aprire la mappa -->
+        <div class="actions" style="justify-content:flex-start; gap:10px;">
+          <button id="openMapBtn" class="btn-primary" type="button">🌍 Apri Mappa</button>
+          <small id="mapHint" style="color:#6b7a94;">Seleziona un punto o un poligono sulla mappa</small>
+        </div>
+
+        <!-- (Opzionale ma utile) input hidden per salvare l'array di coordinate in JSON -->
+        <input type="hidden" id="location_coords" name="location_coords" />
+
 
         <div class="actions">
           <button id="submitBtn" class="btn-primary" type="submit">Save Artwork</button>
@@ -103,11 +106,37 @@
   <script>
       if (!window.BACKEND_URL) {
       const isLocalhost = location.hostname === "localhost" || location.hostname === "127.0.0.1";
-      window.BACKEND_URL = isLocalhost
-          ? "/api"  // backend locale
-          : "https://artlens-production-a8a7.up.railway.app"; // backend produzione
+      window.BACKEND_URL = "/api";
   }
   </script>
+
+  <!-- Overlay Mappa (inizialmente nascosto) -->
+  <div id="mapOverlay" class="md-overlay" style="display:none;">
+      <div class="md-card" style="width:min(980px, 96%); padding:0; overflow:hidden;">
+
+          <div class="md-header">
+              <button id="closeMapBtn" class="md-close" title="Chiudi" aria-label="Chiudi">✖</button>
+          </div>
+
+          <!-- Corpo: controlli + mappa -->
+          <div class="md-body" style="padding:0;">
+              <!-- Controlli mappa (layout 2x2 + conferma) -->
+              <div id="mapControls">
+                  <button id="drawBtn" class="btn-primary" type="button" style="min-height:40px; background:#fff7da; color:#9a7d0a; border:2px solid #f1c40f;">✏️ Poligono</button>
+                  <button id="undoBtn" class="btn-primary" type="button" style="min-height:40px; background:#eef6ff; color:#0047b3; border:2px solid #4b8fff;">↩️ Annulla</button>
+                  <button id="addPointBtn" class="btn-primary" type="button" style="min-height:40px; background:#e6fff5; color:#0a8f6a; border:2px solid #1abc9c;">📍 Punto</button>
+                  <button id="clearBtn" class="btn-primary" type="button" style="min-height:40px; background:#fff4f4; color:#b31313; border:2px solid #d91c1c;">🗑️ Cancella</button>
+                  <button id="confirmBtn" class="btn-primary" type="button" style="grid-column:1 / -1; min-height:44px; background:#2fbf71; border:2px solid #25a460;">
+                      ✅ Conferma coordinate
+                  </button>
+              </div>
+
+              <!-- Area mappa -->
+              <div id="map" style="height:70vh; min-height:480px;"></div>
+          </div>
+      </div>
+  </div>
+
 
   <script type="module" src="../src/js/curator_dashboard.js"></script>
 </body>
