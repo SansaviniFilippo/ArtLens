@@ -338,14 +338,24 @@ function findBestMatch(embedding) {
   const user = window.userCoords;
   let candidates = artworkDB;
 
-  if (user && user.lat && user.lon) {
-    candidates = artworkDB.filter(e =>
-      geojsonHasNearbyPoint(e.location_coords, user, RADIUS_KM)
-    );
-    console.log(`Filtrate ${candidates.length} opere vicine (${RADIUS_KM} km)`);
+  if (user?.lat && user?.lon) {
+    try {
+      candidates = artworkDB.filter(e =>
+        geojsonHasNearbyPoint(e.location_coords, user, RADIUS_KM)
+      );
+      console.log(`🎯 Filtrate ${candidates.length} opere vicine (${RADIUS_KM} km)`);
+    } catch (err) {
+      console.warn('Errore filtro geolocalizzato:', err);
+      candidates = artworkDB; // fallback: usa tutte le opere
+    }
+  } else {
+    console.log('📍 Nessuna posizione utente, confronto su tutte le opere');
   }
 
-  if (!candidates.length) return null;
+  if (!candidates.length) {
+    console.warn('⚠️ Nessun candidato trovato (neanche con posizione)');
+    return null;
+  }
   // --- FINE FILTRO ---
 
   const dim = embedding.length;
@@ -358,16 +368,17 @@ function findBestMatch(embedding) {
     if (!vec || vec.length !== dim) continue;
     let s = 0.0;
     for (let j = 0; j < dim; j++) s += embedding[j] * vec[j];
-
     if (s > bestSim) {
       bestSim = s;
       bestIdx = i;
     }
   }
+
   if (bestIdx < 0) return null;
   const entry = candidates[bestIdx];
   return { entry, confidence: bestSim };
 }
+
 
 export async function drawDetections(ctx, result, onHotspotClick) {
   const w = videoEl.videoWidth;

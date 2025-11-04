@@ -464,18 +464,6 @@ async function runStartup() {
     });
   }
 
-
-  status('Ottenendo la posizione utente…');
-  try {
-    await getUserPosition();
-    window.userCoords = userCoords; // 👈 serve per usarla in render.js
-  } catch (e) {
-    console.warn('Posizione non disponibile:', e);
-    userCoords = null;
-  }
-
-
-
   function hideActivate() {
     if (!activate) return;
     activate.classList.add('hidden');
@@ -491,6 +479,15 @@ async function runStartup() {
     if (hudEl) hudEl.classList.add('hidden');
     running = true;
     startLoop();
+
+    status('Ottenendo la posizione utente…');
+    try {
+      await getUserPosition();
+      window.userCoords = userCoords; // 👈 serve per usarla in render.js
+    } catch (e) {
+      console.warn('Posizione non disponibile:', e);
+      userCoords = null;
+    }
 
     try {
       status('Initializing object detector…');
