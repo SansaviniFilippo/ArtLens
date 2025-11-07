@@ -263,9 +263,47 @@ function openDetail(entry, confidence) {
   const desc = entry?.descriptions ? (pickLangText(entry.descriptions) || '') : (entry?.description || '');
   if (detailBodyEl) detailBodyEl.textContent = desc;
 
-  initDetailMap(entry.location_coords, userCoords);
-  startLiveUserTracking();
+  // Mostra la mappa solo se la posizione utente è disponibile
+  const mapEl = document.getElementById("detailMap");
 
+  if (userCoords && userCoords.lat && userCoords.lon) {
+    // Assicuriamoci di ripristinare visibilità se erano stati nascosti in precedenza
+    if (mapEl) {
+      // Row "Mappa" (elemento subito prima della mappa nel DOM)
+      const rowMappa = mapEl.previousElementSibling;
+      if (rowMappa && rowMappa.classList.contains('row')) rowMappa.style.display = '';
+
+      // Separatore sopra la row "Mappa" (due elementi prima della mappa)
+      const sep = rowMappa?.previousElementSibling;
+      if (sep && sep.classList.contains('detail-sep')) sep.style.display = '';
+
+      // Mostra mappa
+      mapEl.style.display = '';
+    }
+
+    initDetailMap(entry.location_coords, userCoords);
+    startLiveUserTracking();
+  } else {
+    // Utente NON ha dato la posizione → nascondi mappa + label + separatore
+    if (!mapEl) {
+      // safety: niente da fare se manca l'elemento
+    } else {
+      // Nascondi la mappa
+      mapEl.style.display = "none";
+
+      // Row "Mappa" è l'elemento subito prima della mappa
+      const rowMappa = mapEl.previousElementSibling;
+      if (rowMappa && rowMappa.classList.contains('row')) {
+        rowMappa.style.display = "none";
+      }
+
+      // Il separatore è quello sopra la row "Mappa"
+      const sep = rowMappa?.previousElementSibling;
+      if (sep && sep.classList.contains('detail-sep')) {
+        sep.style.display = "none";
+      }
+    }
+  }
 
   if (detailEl) {
     detailEl.classList.remove('hidden', 'closing');
@@ -426,7 +464,7 @@ function startLiveUserTracking() {
 
       view.fit(extent, {
         padding: [40, 40, 40, 40],
-        maxZoom: 20,     // più zoom massimo
+        maxZoom: 21,     // più zoom massimo
         minZoom: 16,     // non permette di allontanarsi troppo
         duration: 600,
       });
