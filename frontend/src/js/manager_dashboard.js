@@ -2,7 +2,7 @@ import { initEmbeddingModel, embedFromCanvas } from './embedding.js';
 import { BACKEND_URL, CROP_SIZE } from './constants.js';
 import { getLang, loadMonumentDB } from './db.js';
 
-const ADMIN_TOKEN_FIXED = 'monulens_admin';
+const ADMIN_TOKEN_FIXED = 'monumentspot_admin';
 
 const submitBtn = document.getElementById('submitBtn');
 const statusEl = document.getElementById('statusMsg');
@@ -28,7 +28,7 @@ function initMapOverlay(existingGeoJSON = null) {
     target: "map",
     layers: [new ol.layer.Tile({ source: new ol.source.OSM() })],
     view: new ol.View({
-      center: ol.proj.fromLonLat([12.0409, 44.2220]), // 📍 Forlì
+      center: ol.proj.fromLonLat([12.0409, 44.2220]), // Forlì
       zoom: 16,
     }),
   });
@@ -618,7 +618,7 @@ if (formEl) formEl.addEventListener('submit', onSubmit);
 
   // Auth guard and optional logout handling
   try {
-    const AUTH_KEY = 'monulens.auth';
+    const AUTH_KEY = 'monumentspot.auth';
     const qs = new URLSearchParams(location.search);
     if (qs.has('logout')) { try { localStorage.removeItem(AUTH_KEY); } catch(_) {} }
     const authed = !!localStorage.getItem(AUTH_KEY);
@@ -690,7 +690,7 @@ if (formEl) formEl.addEventListener('submit', onSubmit);
 
   // Sign out
   const signOutBtn = document.getElementById('signOutBtn');
-  if (signOutBtn) signOutBtn.addEventListener('click', ()=>{ try { localStorage.removeItem('monulens.auth'); } catch(_) {} location.href = './manager_access.html'; });
+  if (signOutBtn) signOutBtn.addEventListener('click', ()=>{ try { localStorage.removeItem('monumentspot.auth'); } catch(_) {} location.href = './manager_access.html'; });
   // ------------------------------
   // Manage Collection: tabs + table
   // ------------------------------

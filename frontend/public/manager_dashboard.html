@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>manager - dashboard</title>
+  <title>Manager dashboard</title>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://cdn.jsdelivr.net/npm/ol@v9.1.0/ol.css" rel="stylesheet" />
   <script src="https://cdn.jsdelivr.net/npm/ol@v9.1.0/dist/ol.js"></script>
@@ -106,9 +106,7 @@
   <script>
       if (!window.BACKEND_URL) {
           const isLocalhost = location.hostname === "localhost" || location.hostname === "127.0.0.1";
-          window.BACKEND_URL = isLocalhost
-              ? "/api"  // backend locale
-              : "https://monulens-production.up.railway.app"; // backend produzione
+          window.BACKEND_URL = "/api";
       }
   </script>
 

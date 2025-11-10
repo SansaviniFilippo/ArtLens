@@ -31,7 +31,7 @@ ADMIN_TOKEN = os.getenv("ADMIN_TOKEN")
 # ----------------------------------------------------------------------------
 # App
 # ----------------------------------------------------------------------------
-app = FastAPI(title="Monulens Backend", version="0.1.0")
+app = FastAPI(title="MonumentSpot Backend", version="0.1.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -52,7 +52,7 @@ db_dim: Optional[int] = None
 
 # Disk cache configuration
 ENABLE_DISK_CACHE = os.getenv("ENABLE_DISK_CACHE", "true").strip().lower() in ("1", "true", "yes", "y", "on")
-DISK_CACHE_PATH = os.getenv("DISK_CACHE_PATH") or os.path.join(tempfile.gettempdir(), "monulens_cache.json")
+DISK_CACHE_PATH = os.getenv("DISK_CACHE_PATH") or os.path.join(tempfile.gettempdir(), "monumentspot_cache.json")
 _cache_io_lock = threading.Lock()
 
 
@@ -321,18 +321,18 @@ def upsert_monument(monu: MonumentUpsert, x_admin_token: str = Header(default=""
                 _refresh_cache_from_db()
             except Exception as re:
                 # Fallback: apply to in-memory cache and persist warm cache to disk
-                print("[Monulens] cache refresh error after upsert, applying fallback:", re)
+                print("[MonumentSpot] cache refresh error after upsert, applying fallback:", re)
                 try:
                     _apply_upsert_to_cache(monu_dict, upsert_res or {})
                     _save_cache_to_file()
                 except Exception as e2:
-                    print("[Monulens] fallback cache apply failed:", e2)
+                    print("[MonumentSpot] fallback cache apply failed:", e2)
         except ValueError as e:
             # Validation error coming from service (e.g., dim mismatch)
             raise HTTPException(status_code=400, detail=str(e))
         except Exception as e:
             # DB write failed; fallback to in-memory cache persistence
-            print("[Monulens] DB upsert failed, saving to in-memory cache:", e)
+            print("[MonumentSpot] DB upsert failed, saving to in-memory cache:", e)
             vds = monu_dict.get("visual_descriptors") or []
             normalized = []
             observed_dim = None
@@ -368,13 +368,13 @@ def upsert_monument(monu: MonumentUpsert, x_admin_token: str = Header(default=""
                 _apply_upsert_to_cache(monu_dict, upsert_res)
                 _save_cache_to_file()
             except Exception as e2:
-                print("[Monulens] in-memory cache fallback failed:", e2)
+                print("[MonumentSpot] in-memory cache fallback failed:", e2)
                 raise HTTPException(status_code=500, detail="Failed to persist in memory")
     except HTTPException:
         # Re-raise HTTP errors untouched
         raise
     except Exception as e:
-        print("[Monulens] upsert error:", e)
+        print("[MonumentSpot] upsert error:", e)
         raise HTTPException(status_code=500, detail="Failed to persist")
     return {"status": "ok", "id": monu_id}
 
@@ -395,7 +395,7 @@ def delete_monument(monu_id: str, x_admin_token: str = Header(default="")):
     try:
         _refresh_cache_from_db()
     except Exception as re:
-        print("[Monulens] cache refresh error after delete:", re)
+        print("[MonumentSpot] cache refresh error after delete:", re)
     return {"status": "ok", "deleted": monu_id}
 
 
@@ -449,7 +449,7 @@ def delete_monument_descriptor(monu_id: str, descriptor_id: str, x_admin_token: 
     try:
         _refresh_cache_from_db()
     except Exception as re:
-        print("[Monulens] cache refresh error after descriptor delete:", re)
+        print("[MonumentSpot] cache refresh error after descriptor delete:", re)
     return {"status": "ok", "deleted": descriptor_id}
 
 
@@ -519,7 +519,7 @@ def _apply_upsert_to_cache(monu_meta: Dict[str, Any], upsert: Dict[str, Any]) ->
             if isinstance(od, int):
                 db_dim = od
     except Exception as e:
-        print("[Monulens] Warning: failed to apply upsert to cache:", e)
+        print("[MonumentSpot] Warning: failed to apply upsert to cache:", e)
 
 
 def _save_cache_to_file():
@@ -539,9 +539,9 @@ def _save_cache_to_file():
                 json.dump(payload, f, ensure_ascii=False, separators=(",", ":"))
             os.replace(tmp_path, DISK_CACHE_PATH)
         size = os.path.getsize(DISK_CACHE_PATH)
-        print(f"[Monulens] Cache saved to disk: {DISK_CACHE_PATH} ({size} bytes)")
+        print(f"[MonumentSpot] Cache saved to disk: {DISK_CACHE_PATH} ({size} bytes)")
     except Exception as e:
-        print("[Monulens] Failed to save cache to disk:", e)
+        print("[MonumentSpot] Failed to save cache to disk:", e)
 
 
 def _load_cache_from_file() -> bool:
@@ -569,10 +569,10 @@ def _load_cache_from_file() -> bool:
         monuments = {str(k): v for k, v in aw.items()}
         flat_descriptors = fd
         db_dim = dim if isinstance(dim, int) or dim is None else None
-        print(f"[Monulens] Cache loaded from disk: monuments={len(monuments)}, descriptors={len(flat_descriptors)}, dim={db_dim}")
+        print(f"[MonumentSpot] Cache loaded from disk: monuments={len(monuments)}, descriptors={len(flat_descriptors)}, dim={db_dim}")
         return True
     except Exception as e:
-        print("[Monulens] Failed to load cache from disk:", e)
+        print("[MonumentSpot] Failed to load cache from disk:", e)
         return False
 
 
@@ -621,7 +621,7 @@ def _refresh_cache_from_db() -> _TupleAlias[int, int]:
     try:
         _save_cache_to_file()
     except Exception as e:
-        print("[Monulens] Warning: could not persist cache to disk:", e)
+        print("[MonumentSpot] Warning: could not persist cache to disk:", e)
     return (len(monuments), len(flat_descriptors))
 
 
@@ -633,7 +633,7 @@ def _startup_refresh_cache():
         if _load_cache_from_file():
             return
     except Exception as e:
-        print("[Monulens] Disk cache load failed, will try DB:", e)
+        print("[MonumentSpot] Disk cache load failed, will try DB:", e)
 
     # Retry startup cache load to tolerate transient DB connectivity on Render/Supabase
     max_retries = int(os.getenv("STARTUP_DB_RETRIES", "5"))
@@ -642,17 +642,17 @@ def _startup_refresh_cache():
     for attempt in range(1, max_retries + 1):
         try:
             a, d = _refresh_cache_from_db()
-            print(f"[Monulens] Cache loaded from Supabase: monuments={a}, descriptors={d}, dim={db_dim}")
+            print(f"[MonumentSpot] Cache loaded from Supabase: monuments={a}, descriptors={d}, dim={db_dim}")
             return
         except Exception as e:
             last_err = e
             if attempt < max_retries:
-                print(f"[Monulens] Startup cache load attempt {attempt}/{max_retries} failed: {e}. Retrying in {delay:.1f}s...")
+                print(f"[MonumentSpot] Startup cache load attempt {attempt}/{max_retries} failed: {e}. Retrying in {delay:.1f}s...")
                 import time
                 time.sleep(delay)
                 delay = min(delay * 2, 15.0)
             else:
-                print(f"[Monulens] Failed to load cache from Supabase at startup after {max_retries} attempts: {e}")
+                print(f"[MonumentSpot] Failed to load cache from Supabase at startup after {max_retries} attempts: {e}")
                 break
 
 

@@ -340,17 +340,17 @@ function findBestMatch(embedding) {
       candidates = monumentDB.filter(e =>
         geojsonHasNearbyPoint(e.location_coords, user, RADIUS_KM)
       );
-      console.log(`🎯 Filtrate ${candidates.length} opere vicine (${RADIUS_KM} km)`);
+      console.log(`Filtrate ${candidates.length} opere vicine (${RADIUS_KM} km)`);
     } catch (err) {
       console.warn('Errore filtro geolocalizzato:', err);
       candidates = monumentDB; // fallback: usa tutte le opere
     }
   } else {
-    console.log('📍 Nessuna posizione utente, confronto su tutte le opere');
+    console.log('Nessuna posizione utente, confronto su tutte le opere');
   }
 
   if (!candidates.length) {
-    console.warn('⚠️ Nessun candidato trovato (neanche con posizione)');
+    console.warn('Nessun candidato dopo filtro geolocalizzato');
     return null;
   }
   // --- FINE FILTRO ---

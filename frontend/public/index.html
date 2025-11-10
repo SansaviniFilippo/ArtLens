@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>MonuLens</title>
+  <title>MonumentSpot</title>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Cormorant+Garamond:wght@600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles/index.css" />
@@ -26,7 +26,7 @@
         <img class="mark" src="images/liberty_statue.png" alt="Logo" />
       </header>
 
-      <h1 id="t" class="title">MonuLens</h1>
+      <h1 id="t" class="title">MonumentSpot</h1>
       <p class="subtitle">Discover monuments through technology</p>
 
       <div class="actions">
@@ -54,9 +54,7 @@
   <script>
       if (!window.BACKEND_URL) {
           const isLocalhost = location.hostname === "localhost" || location.hostname === "127.0.0.1";
-          window.BACKEND_URL = isLocalhost
-              ? "/api"  // backend locale
-              : "https://monulens-production.up.railway.app"; // backend produzione
+          window.BACKEND_URL = "/api";
       }
   </script>
 

@@ -20,7 +20,7 @@ async function getUserPosition() {
         resolve(userCoords);
       },
       (err) => reject(err),
-      { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
     );
   });
 }
@@ -335,7 +335,7 @@ function initDetailMap(geojson, userCoords) {
     target: mapEl,
     layers: [new ol.layer.Tile({ source: new ol.source.OSM() })],
     view: new ol.View({
-      center: ol.proj.fromLonLat([12.0409, 44.2220]), // 📍 Forlì
+      center: ol.proj.fromLonLat([12.0409, 44.2220]), // Forlì
       zoom: 17,
     }),
     controls: [],
