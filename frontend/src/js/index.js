@@ -4,7 +4,10 @@ import { initDetector, detector, closeDetector } from './detection.js';
 import { initEmbeddingModel } from './embedding.js';
 import { loadMonumentDB, pickLangText, getLang, setLang } from './db.js';
 import { drawDetections, getLastMatches, resetRenderState } from './render.js';
+import { loadServerConfig } from './constants.js';
+import { CITY_NAME } from './constants.js';
 
+await loadServerConfig();
 
 let userCoords = null;
 window.userCoords = userCoords;
@@ -137,7 +140,7 @@ function getI18n(lang) {
       },
       // Homepage strings
       home: {
-        subtitle: "Scopri i monumenti di Forlì",
+        subtitle: "Scopri i monumenti di {{CITY}}",
         scan: "Scansiona Monumento",
         curator: "Accesso Gestore",
         foot: "Basato su un sistema di riconoscimento AI",
@@ -161,7 +164,7 @@ function getI18n(lang) {
         close: "Close"
       },
       home: {
-        subtitle: "Discover the monuments of Forlì",
+        subtitle: "Discover the monuments of {{CITY}}",
         scan: "Scan Monument",
         curator: "Manager Login",
         foot: "Powered by AI recognition system",
@@ -249,7 +252,7 @@ function applyLanguageToUI() {
     const scanLabelEl = scanBtnEl.querySelector('span:last-child');
     const curatorLabelEl = curatorBtnEl ? curatorBtnEl.querySelector('span:last-child') : null;
     const footEl = document.querySelector('.card .foot');
-    if (subtitleEl && t.home.subtitle) subtitleEl.textContent = t.home.subtitle;
+    if (subtitleEl && t.home.subtitle) subtitleEl.textContent = t.home.subtitle.replace("{{CITY}}", CITY_NAME);
     if (scanLabelEl && t.home.scan) scanLabelEl.textContent = t.home.scan;
     if (curatorLabelEl && t.home.curator) curatorLabelEl.textContent = t.home.curator;
     if (footEl && t.home.foot) footEl.textContent = t.home.foot;

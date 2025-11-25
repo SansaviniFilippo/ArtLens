@@ -2,7 +2,7 @@ import { videoEl, canvasEl } from './dom.js';
 import { clearHotspots, renderHotspot, placeHintOverBox, showHintFor, hideHint, showInfo, videoPointToDisplay } from './ui.js';
 import { cropToCanvasFromVideo, embedFromCanvas, hasEmbedModel } from './embedding.js';
 import { monumentDB, dbDim, pickLangText, getLang } from './db.js';
-import { BACKEND_URL, COSINE_THRESHOLD, DEBUG_FALLBACK_CROP, MAX_BOXES_PER_FRAME, MIN_BOX_SCORE, CROP_SIZE } from './constants.js';
+import { BACKEND_URL, COSINE_THRESHOLD, DEBUG_FALLBACK_CROP, MAX_BOXES_PER_FRAME, MIN_BOX_SCORE, CROP_SIZE, RADIUS_KM } from './constants.js';
 
 let lastMatches = [];
 let lastRecognizedKey = null;
@@ -331,7 +331,6 @@ function findBestMatch(embedding) {
     return null;
 
   // --- FILTRO GEOLOCALIZZATO ---
-  const RADIUS_KM = 0.3; // 300 metri
   const user = window.userCoords;
   let candidates = monumentDB;
 

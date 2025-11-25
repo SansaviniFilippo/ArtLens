@@ -102,6 +102,14 @@ class MatchResponse(BaseModel):
 # ----------------------------------------------------------------------------
 # Endpoints
 # ----------------------------------------------------------------------------
+
+@app.get("/config")
+def get_config():
+    return {
+        "RADIUS_KM": float(os.getenv("RADIUS_KM", "0.3")),
+        "CITY_NAME": os.getenv("CITY_NAME", "Forlì")
+    }
+
 @app.get("/health")
 def health():
     return {
